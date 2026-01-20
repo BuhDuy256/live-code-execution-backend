@@ -19,7 +19,6 @@ export const codeExecutionWorker = new Worker<CodeExecutionJobData>(
 
     try {
       await ExecutionRepository.updateExecutionStatus(executionId, ExecutionStatus.RUNNING);
-
       await job.updateProgress({ status: "RUNNING", progress: 10 });
 
       const startTime = Date.now();
@@ -29,27 +28,41 @@ export const codeExecutionWorker = new Worker<CodeExecutionJobData>(
         memoryLimit: parseInt(process.env["MAX_MEMORY_MB"] || "128"),
       });
 
-      const endTime = Date.now();
-      const executionTimeMs = endTime - startTime;
+      const executionTimeMs = Date.now() - startTime;
 
-      await ExecutionRepository.updateExecutionStatus(executionId, ExecutionStatus.COMPLETED, {
-        stdout: result.stdout,
-        stderr: result.stderr,
-        exit_code: result.exitCode,
-        execution_time_ms: executionTimeMs,
-        started_at: new Date(startTime).toISOString(),
-        completed_at: new Date(endTime).toISOString(),
-      });
+      const hasUserCodeError = result.stderr || (result.exitCode !== undefined && result.exitCode !== 0);
 
-      console.log(`Execution ${executionId} completed in ${executionTimeMs}ms`);
+      if (hasUserCodeError) {
+        await ExecutionRepository.updateExecutionStatus(executionId, ExecutionStatus.FAILED, {
+          stdout: result.stdout,
+          stderr: result.stderr || "",
+          exit_code: result.exitCode ?? 1,
+          execution_time_ms: executionTimeMs,
+        });
+
+        console.log(`Execution ${executionId} failed: user code error (exit code: ${result.exitCode})`);
+      } else {
+        await ExecutionRepository.updateExecutionStatus(executionId, ExecutionStatus.COMPLETED, {
+          stdout: result.stdout,
+          stderr: null,
+          exit_code: 0,
+          execution_time_ms: executionTimeMs,
+        });
+
+        console.log(`Execution ${executionId} completed successfully in ${executionTimeMs}ms`);
+      }
 
       return result;
     } catch (error: any) {
-      const status = error?.name === "TimeoutError" ? ExecutionStatus.TIMEOUT : ExecutionStatus.FAILED;
+      const isTimeout = error?.name === "TimeoutError";
+      const status = isTimeout ? ExecutionStatus.TIMEOUT : ExecutionStatus.FAILED;
 
       await ExecutionRepository.updateExecutionStatus(executionId, status, {
-        error_message: error.message,
+        error_message: error?.message || "Unknown system error",
+        stderr: null,
       });
+
+      console.error(`Execution ${executionId} system error (${status}):`, error?.message);
 
       throw error;
     }
