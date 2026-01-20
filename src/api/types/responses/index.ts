@@ -1,6 +1,5 @@
-export type { SessionResponse } from "./session";
+export type { SessionResponse, RunCodeResponse } from "./codeSession";
 export type {
   ExecutionStatus,
-  RunCodeResponse,
   ExecutionResultResponse,
 } from "./execution";

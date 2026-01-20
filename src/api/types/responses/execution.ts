@@ -4,14 +4,6 @@
 export type ExecutionStatus = "QUEUED" | "RUNNING" | "COMPLETED" | "FAILED" | "TIMEOUT";
 
 /**
- * Response for POST /code-sessions/{session_id}/run
- */
-export interface RunCodeResponse {
-  execution_id: string;
-  status: "QUEUED";
-}
-
-/**
  * Response for GET /executions/{execution_id}
  */
 export interface ExecutionResultResponse {
