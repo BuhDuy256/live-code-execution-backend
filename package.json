@@ -11,6 +11,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "db:init": "ts-node scripts/init-db.ts",
+    "db:reset": "ts-node scripts/init-db.ts --force",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix"
   },
@@ -33,6 +34,7 @@
     "express": "^5.2.1",
     "ioredis": "^5.9.2",
     "knex": "^3.1.0",
+    "sqlite3": "^5.1.7",
     "uuid": "^13.0.0",
     "zod": "^4.3.5"
   },

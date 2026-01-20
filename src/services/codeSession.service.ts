@@ -1,9 +1,12 @@
 import { SessionResponse, RunCodeResponse } from "../api/types/responses";
+import * as CodeSessionRepository from "../repositories/codeSession.repository";
 
-export const createNewCodingSession = async (): Promise<SessionResponse> => {
+export const createNewCodingSession = async (language: string): Promise<SessionResponse> => {
+  const sessionId = crypto.randomUUID();
+  await CodeSessionRepository.createCodeSession(sessionId, language);
   return {
-    session_id: "...",
-    status: "ACTIVE"
+    session_id: sessionId,
+    status: "ACTIVE",
   }
 }
 

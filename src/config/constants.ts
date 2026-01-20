@@ -45,3 +45,95 @@ export const WORKER_CONFIG = {
   RATE_LIMIT_MAX: 10,
   RATE_LIMIT_DURATION_MS: 1000,
 } as const;
+
+/**
+ * Code templates for each supported language
+ */
+export const CODE_TEMPLATES: Record<string, string> = {
+  javascript: `// JavaScript Template
+console.log('Hello, World!');
+
+// Write your code here
+`,
+
+  typescript: `// TypeScript Template
+const greeting: string = 'Hello, World!';
+console.log(greeting);
+
+// Write your code here
+`,
+
+  python: `# Python Template
+print('Hello, World!')
+
+# Write your code here
+`,
+
+  java: `// Java Template
+public class Main {
+    public static void main(String[] args) {
+        System.out.println("Hello, World!");
+        
+        // Write your code here
+    }
+}
+`,
+
+  cpp: `// C++ Template
+#include <iostream>
+
+int main() {
+    std::cout << "Hello, World!" << std::endl;
+    
+    // Write your code here
+    
+    return 0;
+}
+`,
+
+  c: `// C Template
+#include <stdio.h>
+
+int main() {
+    printf("Hello, World!\\n");
+    
+    // Write your code here
+    
+    return 0;
+}
+`,
+
+  go: `// Go Template
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Hello, World!")
+    
+    // Write your code here
+}
+`,
+
+  rust: `// Rust Template
+fn main() {
+    println!("Hello, World!");
+    
+    // Write your code here
+}
+`,
+
+  ruby: `# Ruby Template
+puts 'Hello, World!'
+
+# Write your code here
+`,
+
+  php: `<?php
+// PHP Template
+echo "Hello, World!\\n";
+
+// Write your code here
+?>
+`,
+} as const;
