@@ -11,6 +11,7 @@ export const createNewCodingSession = async (language: string): Promise<SessionR
 }
 
 export const updateCode = async (sessionId: string, language: string, newCode: string): Promise<SessionResponse> => {
+  await CodeSessionRepository.updateCodeSession(sessionId, language, newCode);
   return {
     session_id: sessionId,
     status: "ACTIVE"
