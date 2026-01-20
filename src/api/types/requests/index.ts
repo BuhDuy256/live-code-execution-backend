@@ -1,1 +1,11 @@
-export { updateSessionSchema, type UpdateSessionRequest } from "./updateSession";
+export {
+  patchSessionBodySchema,
+  sessionIdParamsSchema,
+  type PatchSessionBody,
+  type SessionIdParams,
+} from "./codeSession";
+
+export {
+  executionIdParamsSchema,
+  type ExecutionIdParams,
+} from "./execution";
