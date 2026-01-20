@@ -29,7 +29,8 @@ CREATE TABLE code_executions (
   completed_at TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-  FOREIGN KEY (session_id) REFERENCES code_sessions(id) ON DELETE CASCADE
+  FOREIGN KEY (session_id) REFERENCES code_sessions(id) ON DELETE CASCADE,
+  CHECK (status IN ('QUEUED', 'RUNNING', 'COMPLETED', 'FAILED', 'TIMEOUT'))
 );
 
 CREATE INDEX idx_code_executions_session_id ON code_executions(session_id);

@@ -1,5 +1,6 @@
 import db from '../config/database';
 import { getTemplateByLanguage } from '../utils/template.util';
+import { CodeSession } from '../models';
 
 export const createCodeSession = async (session_id: string, language: string) => {
   await db('code_sessions').insert({
@@ -11,7 +12,7 @@ export const createCodeSession = async (session_id: string, language: string) =>
   });
 }
 
-export const getCodeSessionById = async (session_id: string): Promise<{ status: string }> => {
+export const getCodeSessionById = async (session_id: string): Promise<CodeSession | undefined> => {
   const session = await db('code_sessions').where({ id: session_id }).first();
   return session;
 }

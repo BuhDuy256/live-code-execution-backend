@@ -3,6 +3,9 @@ import { redisOptions } from "../config/redis";
 import { CodeExecutionJobData } from "../queues/codeExecution.queue";
 import type { ExecutionResult } from "../types/execution";
 import { WORKER_SIGNALS, WORKER_CONFIG } from "../config/constants";
+import * as ExecutionRepository from "../repositories/execution.repository";
+import * as CodeRunnerService from "../services/codeRunner.service";
+import { ExecutionStatus } from "../models";
 
 export const codeExecutionWorker = new Worker<CodeExecutionJobData>(
   "code-execution",
@@ -12,35 +15,41 @@ export const codeExecutionWorker = new Worker<CodeExecutionJobData>(
     }
 
     const executionId = String(job.id);
-    const { sessionId, sourceCode, language } = job.data;
+    const { sourceCode, language } = job.data;
 
     try {
-      // TODO: Code update status of the job to RUNNING
+      await ExecutionRepository.updateExecutionStatus(executionId, ExecutionStatus.RUNNING);
 
       await job.updateProgress({ status: "RUNNING", progress: 10 });
 
       const startTime = Date.now();
 
-      // TODO: Code run code in sandboxed environment
-      // Mock execution - simulate running code
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      
-      const result: ExecutionResult = {
-        stdout: `Mock execution output for session ${sessionId}\nLanguage: ${language}`,
-        stderr: "",
-        exitCode: 0,
-      };
+      const result: ExecutionResult = await CodeRunnerService.runCodeInSandbox(sourceCode, language, {
+        timeout: parseInt(process.env["MAX_EXECUTION_TIME_MS"] || "5000"),
+        memoryLimit: parseInt(process.env["MAX_MEMORY_MB"] || "128"),
+      });
 
-      const executionTimeMs = Date.now() - startTime;
+      const endTime = Date.now();
+      const executionTimeMs = endTime - startTime;
 
-      // TODO: Code update status of the job to COMPLETED with results
+      await ExecutionRepository.updateExecutionStatus(executionId, ExecutionStatus.COMPLETED, {
+        stdout: result.stdout,
+        stderr: result.stderr,
+        exit_code: result.exitCode,
+        execution_time_ms: executionTimeMs,
+        started_at: new Date(startTime).toISOString(),
+        completed_at: new Date(endTime).toISOString(),
+      });
+
       console.log(`Execution ${executionId} completed in ${executionTimeMs}ms`);
 
       return result;
     } catch (error: any) {
-      const status = error?.name === "TimeoutError" ? "TIMEOUT" : "FAILED";
+      const status = error?.name === "TimeoutError" ? ExecutionStatus.TIMEOUT : ExecutionStatus.FAILED;
 
-      // TODO: Code update status of the job to FAILED with error details
+      await ExecutionRepository.updateExecutionStatus(executionId, status, {
+        error_message: error.message,
+      });
 
       throw error;
     }
