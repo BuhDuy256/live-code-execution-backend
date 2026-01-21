@@ -2,7 +2,7 @@ import { Worker, Job } from "bullmq";
 import { redisOptions } from "../config/redis";
 import { CodeExecutionJobData } from "../queues/codeExecution.queue";
 import type { ExecutionResult } from "../types/execution";
-import { WORKER_SIGNALS, WORKER_CONFIG } from "../config/constants";
+import { WORKER_SIGNALS, WORKER_CONFIG, EXECUTION_LIMITS } from "../config/constants";
 import * as ExecutionRepository from "../repositories/execution.repository";
 import * as CodeRunnerService from "../services/codeRunner.service";
 import { ExecutionStatus } from "../models";
@@ -24,8 +24,8 @@ export const codeExecutionWorker = new Worker<CodeExecutionJobData>(
       const startTime = Date.now();
 
       const result: ExecutionResult = await CodeRunnerService.runCodeInSandbox(sourceCode, language, {
-        timeout: parseInt(process.env["MAX_EXECUTION_TIME_MS"] || "5000"),
-        memoryLimit: parseInt(process.env["MAX_MEMORY_MB"] || "128"),
+        timeout: EXECUTION_LIMITS.TIMEOUT_MS,
+        memoryLimit: EXECUTION_LIMITS.MEMORY_MB,
       });
 
       const executionTimeMs = Date.now() - startTime;
@@ -69,7 +69,7 @@ export const codeExecutionWorker = new Worker<CodeExecutionJobData>(
   },
   {
     connection: redisOptions,
-    concurrency: Number(process.env["WORKER_CONCURRENCY"] || WORKER_CONFIG.DEFAULT_CONCURRENCY),
+    concurrency: WORKER_CONFIG.CONCURRENCY,
     limiter: {
       max: WORKER_CONFIG.RATE_LIMIT_MAX,
       duration: WORKER_CONFIG.RATE_LIMIT_DURATION_MS,

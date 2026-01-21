@@ -16,22 +16,37 @@ export const QUEUE_SIGNALS: NodeJS.Signals[] = ["SIGTERM", "SIGINT", "SIGQUIT"];
 export const WORKER_SIGNALS: NodeJS.Signals[] = ["SIGINT", "SIGTERM"];
 
 /**
- * Code templates for each supported language
+ * Centralized language configuration
+ * Contains all language-specific settings: template, fileName, and execution command
  */
-export const CODE_TEMPLATES = {
-  javascript: `// JavaScript Template
+export const LANGUAGE_CONFIG = {
+  javascript: {
+    fileName: "main.js",
+    command: "node",
+    args: [] as string[],
+    template: `// JavaScript Template
 console.log('Hello, World!');
 
 // Write your code here
 `,
+  },
 
-  python: `# Python Template
+  python: {
+    fileName: "main.py",
+    command: "python3",
+    args: [] as string[],
+    template: `# Python Template
 print('Hello, World!')
 
 # Write your code here
 `,
+  },
 
-  java: `// Java Template
+  java: {
+    fileName: "Main.java",
+    command: "java",
+    args: [] as string[],
+    template: `// Java Template
 public class Main {
     public static void main(String[] args) {
         System.out.println("Hello, World!");
@@ -40,24 +55,40 @@ public class Main {
     }
 }
 `,
+  },
 } as const;
 
 /**
  * Supported programming languages for code execution
- * Automatically derived from CODE_TEMPLATES
+ * Automatically derived from LANGUAGE_CONFIG
  */
-export const SUPPORTED_LANGUAGES = Object.keys(CODE_TEMPLATES) as Array<keyof typeof CODE_TEMPLATES>;
+export const SUPPORTED_LANGUAGES = Object.keys(LANGUAGE_CONFIG) as Array<keyof typeof LANGUAGE_CONFIG>;
 
-export type SupportedLanguage = keyof typeof CODE_TEMPLATES;
+export type SupportedLanguage = keyof typeof LANGUAGE_CONFIG;
+
+/**
+ * Code templates for each supported language
+ * Automatically derived from LANGUAGE_CONFIG for backward compatibility
+ */
+export const CODE_TEMPLATES = Object.fromEntries(
+  Object.entries(LANGUAGE_CONFIG).map(([lang, config]) => [lang, config.template])
+) as Record<SupportedLanguage, string>;
 
 /**
  * Default execution limits
  */
 export const EXECUTION_LIMITS = {
-  MAX_TIMEOUT_MS: 30000,
-  MAX_MEMORY_MB: 256,
-  DEFAULT_TIMEOUT_MS: 5000,
-  DEFAULT_MEMORY_MB: 128,
+  TIMEOUT_MS: 5000,
+  MEMORY_MB: 128,
+} as const;
+
+/**
+ * API Rate Limiting (per session/IP)
+ * Applied at controller layer to prevent spam before queuing
+ */
+export const API_RATE_LIMIT = {
+  MAX_REQUESTS_PER_MINUTE: 10,        // Max executions per session per minute
+  COOLDOWN_BETWEEN_RUNS_MS: 2000,     // Minimum 2s between runs
 } as const;
 
 /**
@@ -68,15 +99,18 @@ export const QUEUE_CONFIG = {
   BACKOFF_DELAY_MS: 1000,
   REMOVE_COMPLETED_AGE_SECONDS: 3600,
   REMOVE_COMPLETED_COUNT: 1000,
-  RATE_LIMIT_MAX: 10,
-  RATE_LIMIT_DURATION_MS: 1000,
 } as const;
 
 /**
  * Worker configuration
  */
 export const WORKER_CONFIG = {
-  DEFAULT_CONCURRENCY: 5,
-  RATE_LIMIT_MAX: 10,
-  RATE_LIMIT_DURATION_MS: 1000,
+  CONCURRENCY: 5,                     // Process 5 jobs concurrently
+  RATE_LIMIT_MAX: 10,                 // Process max 10 jobs
+  RATE_LIMIT_DURATION_MS: 1000,       // Per 1 second
 } as const;
+
+/**
+ * Maximum output size from code execution
+ */
+export const MAX_OUTPUT_SIZE = 1024 * 1024; // 1MB
