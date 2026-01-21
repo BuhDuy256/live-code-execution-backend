@@ -22,7 +22,9 @@ export const codeExecutionQueue = new Queue<CodeExecutionJobData>(
         age: QUEUE_CONFIG.REMOVE_COMPLETED_AGE_SECONDS, // Time in seconds to keep completed jobs before removal
         count: QUEUE_CONFIG.REMOVE_COMPLETED_COUNT, // Maximum number of completed jobs to keep
       },
-      removeOnFail: false, // Keep failed jobs for debugging
+      removeOnFail: {
+        count: QUEUE_CONFIG.REMOVE_FAILED_COUNT, // Maximum number of failed jobs to keep
+      }
     },
   },
 );
