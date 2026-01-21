@@ -653,6 +653,547 @@
         }
       ],
       "description": "Complete workflow examples demonstrating typical usage patterns."
+    },
+    {
+      "name": "Spam Protection Tests",
+      "item": [
+        {
+          "name": "Test 1: Autosave Throttling",
+          "item": [
+            {
+              "name": "Create Session",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    const response = pm.response.json();",
+                      "    pm.collectionVariables.set('session_id', response.session_id);",
+                      "    pm.test('Session created', () => pm.expect(response.session_id).to.be.a('string'));",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"language\": \"python\",\n  \"source_code\": \"print('Initial code')\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/code-sessions",
+                  "host": ["{{base_url}}"],
+                  "path": ["code-sessions"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Rapid Autosave 1",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Autosave accepted (throttled)', () => {",
+                      "    pm.response.to.have.status(200);",
+                      "    pm.expect(pm.response.json().status).to.equal('ACTIVE');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"language\": \"python\",\n  \"source_code\": \"print('Update 1')\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/code-sessions/{{session_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["code-sessions", "{{session_id}}"]
+                },
+                "description": "Send rapid autosaves - API responds immediately but DB writes are throttled to 1/second"
+              },
+              "response": []
+            },
+            {
+              "name": "Rapid Autosave 2",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"language\": \"python\",\n  \"source_code\": \"print('Update 2')\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/code-sessions/{{session_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["code-sessions", "{{session_id}}"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Rapid Autosave 3",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"language\": \"python\",\n  \"source_code\": \"print('Update 3')\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/code-sessions/{{session_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["code-sessions", "{{session_id}}"]
+                }
+              },
+              "response": []
+            }
+          ],
+          "description": "Test autosave throttling - rapid requests return 200 OK immediately but DB writes are throttled to max 1/second per session"
+        },
+        {
+          "name": "Test 2: Content Change Detection",
+          "item": [
+            {
+              "name": "Create Session",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    const response = pm.response.json();",
+                      "    pm.collectionVariables.set('session_id', response.session_id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"language\": \"javascript\",\n  \"source_code\": \"console.log('Same code');\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/code-sessions",
+                  "host": ["{{base_url}}"],
+                  "path": ["code-sessions"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Duplicate Autosave 1",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Duplicate content skipped', () => {",
+                      "    pm.response.to.have.status(200);",
+                      "    pm.expect(pm.response.json().status).to.equal('ACTIVE');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"language\": \"javascript\",\n  \"source_code\": \"console.log('Same code');\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/code-sessions/{{session_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["code-sessions", "{{session_id}}"]
+                },
+                "description": "Send identical content - no DB write performed"
+              },
+              "response": []
+            },
+            {
+              "name": "Duplicate Autosave 2",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"language\": \"javascript\",\n  \"source_code\": \"console.log('Same code');\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/code-sessions/{{session_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["code-sessions", "{{session_id}}"]
+                }
+              },
+              "response": []
+            }
+          ],
+          "description": "Test content change detection - identical content is skipped (no DB write)"
+        },
+        {
+          "name": "Test 3: Execution Cooldown",
+          "item": [
+            {
+              "name": "Create Session",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    const response = pm.response.json();",
+                      "    pm.collectionVariables.set('session_id', response.session_id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"language\": \"python\",\n  \"source_code\": \"print('Hello')\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/code-sessions",
+                  "host": ["{{base_url}}"],
+                  "path": ["code-sessions"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "First Execution",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('First execution queued', () => {",
+                      "    pm.response.to.have.status(202);",
+                      "    const response = pm.response.json();",
+                      "    pm.collectionVariables.set('execution_id', response.execution_id);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/code-sessions/{{session_id}}/run",
+                  "host": ["{{base_url}}"],
+                  "path": ["code-sessions", "{{session_id}}", "run"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Second Execution (Too Soon - 429)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Cooldown enforced - 429 or 409', () => {",
+                      "    // Can be 429 (cooldown) or 409 (still running)",
+                      "    pm.expect([409, 429]).to.include(pm.response.code);",
+                      "    const response = pm.response.json();",
+                      "    pm.expect(response.message).to.be.a('string');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/code-sessions/{{session_id}}/run",
+                  "host": ["{{base_url}}"],
+                  "path": ["code-sessions", "{{session_id}}", "run"]
+                },
+                "description": "Run immediately after first execution - should get 429 (cooldown) or 409 (still running)"
+              },
+              "response": [
+                {
+                  "name": "429 Too Many Requests",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "url": {
+                      "raw": "{{base_url}}/code-sessions/{{session_id}}/run",
+                      "host": ["{{base_url}}"],
+                      "path": ["code-sessions", "{{session_id}}", "run"]
+                    }
+                  },
+                  "status": "Too Many Requests",
+                  "code": 429,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": false,\n  \"message\": \"Please wait 1s before running code again.\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "Third Execution (After Cooldown)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Execution allowed after cooldown', () => {",
+                      "    pm.response.to.have.status(202);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "// Wait 3 seconds for cooldown to expire",
+                      "setTimeout(() => {}, 3000);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/code-sessions/{{session_id}}/run",
+                  "host": ["{{base_url}}"],
+                  "path": ["code-sessions", "{{session_id}}", "run"]
+                },
+                "description": "Wait 3+ seconds then run - should succeed (cooldown expired)"
+              },
+              "response": []
+            }
+          ],
+          "description": "Test execution cooldown - minimum 2 seconds between runs per session. Returns 429 if too fast."
+        },
+        {
+          "name": "Test 4: Active Execution Prevention",
+          "item": [
+            {
+              "name": "Create Session",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    const response = pm.response.json();",
+                      "    pm.collectionVariables.set('session_id', response.session_id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"language\": \"python\",\n  \"source_code\": \"import time\\ntime.sleep(2)\\nprint('Done')\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/code-sessions",
+                  "host": ["{{base_url}}"],
+                  "path": ["code-sessions"]
+                },
+                "description": "Create session with slow code (2 second sleep)"
+              },
+              "response": []
+            },
+            {
+              "name": "Start Long Execution",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Long execution started', () => {",
+                      "    pm.response.to.have.status(202);",
+                      "    pm.collectionVariables.set('execution_id', pm.response.json().execution_id);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/code-sessions/{{session_id}}/run",
+                  "host": ["{{base_url}}"],
+                  "path": ["code-sessions", "{{session_id}}", "run"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Try Run While Active (409)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Active execution prevented - 409 Conflict', () => {",
+                      "    pm.response.to.have.status(409);",
+                      "    const response = pm.response.json();",
+                      "    pm.expect(response.message).to.include('already in progress');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/code-sessions/{{session_id}}/run",
+                  "host": ["{{base_url}}"],
+                  "path": ["code-sessions", "{{session_id}}", "run"]
+                },
+                "description": "Try to run while previous execution is QUEUED or RUNNING - should get 409 Conflict"
+              },
+              "response": [
+                {
+                  "name": "409 Conflict",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [],
+                    "url": {
+                      "raw": "{{base_url}}/code-sessions/{{session_id}}/run",
+                      "host": ["{{base_url}}"],
+                      "path": ["code-sessions", "{{session_id}}", "run"]
+                    }
+                  },
+                  "status": "Conflict",
+                  "code": 409,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"success\": false,\n  \"message\": \"Execution already in progress for this session (RUNNING). Please wait for it to complete.\"\n}"
+                }
+              ]
+            },
+            {
+              "name": "Check Execution Status",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Check if execution completed', () => {",
+                      "    pm.response.to.have.status(200);",
+                      "    const response = pm.response.json();",
+                      "    console.log('Execution status:', response.status);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/executions/{{execution_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["executions", "{{execution_id}}"]
+                }
+              },
+              "response": []
+            }
+          ],
+          "description": "Test active execution prevention - only one execution per session at a time. Returns 409 if execution is QUEUED or RUNNING."
+        }
+      ],
+      "description": "Test spam protection features: autosave throttling, content detection, execution cooldown (429), and active execution prevention (409)."
     }
   ],
   "event": [

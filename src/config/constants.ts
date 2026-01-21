@@ -92,6 +92,14 @@ export const API_RATE_LIMIT = {
 } as const;
 
 /**
+ * Autosave spam protection
+ */
+export const AUTOSAVE_PROTECTION = {
+  THROTTLE_MS: 1000,                  // Minimum 1s between actual DB writes per session
+  PENDING_TIMEOUT_MS: 5000,           // Max time to hold a pending autosave before forcing write
+} as const;
+
+/**
  * Queue configuration
  */
 export const QUEUE_CONFIG = {

@@ -12,6 +12,8 @@
     "start": "node dist/index.js",
     "db:init": "ts-node scripts/init-db.ts",
     "db:reset": "ts-node scripts/init-db.ts --force",
+    "test:spam": "ts-node tests/integration/spam-protection.test.ts",
+    "test:spam:docker": "cross-env API_URL=http://localhost:3000 ts-node tests/integration/spam-protection.test.ts",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix"
   },
@@ -45,7 +47,7 @@
     "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^8.53.1",
     "@typescript-eslint/parser": "^8.53.1",
-    "eslint": "^9.39.2",
+    "axios": "^1.13.2",    "cross-env": "^7.0.3",    "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-import": "^2.32.0",
