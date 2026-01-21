@@ -1,0 +1,678 @@
+{
+  "info": {
+    "name": "Live Code Execution Backend",
+    "description": "API collection for Live Code Execution Backend - supports creating coding sessions, autosaving code, executing code, and retrieving execution results.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "live-code-execution"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "session_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "execution_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Code Sessions",
+      "item": [
+        {
+          "name": "Create Live Code Session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('session_id', response.session_id);",
+                  "    pm.test('Session created successfully', function() {",
+                  "        pm.expect(response.session_id).to.be.a('string');",
+                  "        pm.expect(response.status).to.equal('ACTIVE');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"language\": \"python\",\n  \"source_code\": \"print('Hello World')\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/code-sessions",
+              "host": ["{{base_url}}"],
+              "path": ["code-sessions"]
+            },
+            "description": "Create a new live coding session with specified language and initial source code."
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"language\": \"python\",\n  \"source_code\": \"print('Hello World')\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/code-sessions",
+                  "host": ["{{base_url}}"],
+                  "path": ["code-sessions"]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"session_id\": \"550e8400-e29b-41d4-a716-446655440000\",\n  \"status\": \"ACTIVE\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Autosave Code (Python)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Code autosaved successfully', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.session_id).to.be.a('string');",
+                  "    pm.expect(response.status).to.equal('ACTIVE');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"language\": \"python\",\n  \"source_code\": \"# Updated code\\nfor i in range(5):\\n    print(f'Number: {i}')\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/code-sessions/{{session_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["code-sessions", "{{session_id}}"]
+            },
+            "description": "Autosave the learner's current source code. This endpoint is called frequently during live editing."
+          },
+          "response": []
+        },
+        {
+          "name": "Autosave Code (JavaScript)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"language\": \"javascript\",\n  \"source_code\": \"// JavaScript example\\nfor (let i = 0; i < 5; i++) {\\n    console.log('Number:', i);\\n}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/code-sessions/{{session_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["code-sessions", "{{session_id}}"]
+            },
+            "description": "Example of autosaving JavaScript code."
+          },
+          "response": []
+        },
+        {
+          "name": "Execute Code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 202) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('execution_id', response.execution_id);",
+                  "    pm.test('Code execution queued', function() {",
+                  "        pm.expect(response.execution_id).to.be.a('string');",
+                  "        pm.expect(response.status).to.equal('QUEUED');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/code-sessions/{{session_id}}/run",
+              "host": ["{{base_url}}"],
+              "path": ["code-sessions", "{{session_id}}", "run"]
+            },
+            "description": "Execute code asynchronously. The endpoint returns immediately with execution_id."
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/code-sessions/{{session_id}}/run",
+                  "host": ["{{base_url}}"],
+                  "path": ["code-sessions", "{{session_id}}", "run"]
+                }
+              },
+              "status": "Accepted",
+              "code": 202,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"execution_id\": \"660e8400-e29b-41d4-a716-446655440001\",\n  \"status\": \"QUEUED\"\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Endpoints for managing live coding sessions: create, autosave, and execute code."
+    },
+    {
+      "name": "Executions",
+      "item": [
+        {
+          "name": "Get Execution Result",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const response = pm.response.json();",
+                  "",
+                  "pm.test('Execution has valid status', function() {",
+                  "    const validStatuses = ['QUEUED', 'RUNNING', 'COMPLETED', 'FAILED', 'TIMEOUT'];",
+                  "    pm.expect(validStatuses).to.include(response.status);",
+                  "});",
+                  "",
+                  "if (response.status === 'COMPLETED') {",
+                  "    pm.test('Completed execution has required fields', function() {",
+                  "        pm.expect(response).to.have.property('stdout');",
+                  "        pm.expect(response).to.have.property('stderr');",
+                  "        pm.expect(response).to.have.property('execution_time_ms');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/executions/{{execution_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["executions", "{{execution_id}}"]
+            },
+            "description": "Retrieve execution status and result. Status can be: QUEUED, RUNNING, COMPLETED, FAILED, or TIMEOUT."
+          },
+          "response": [
+            {
+              "name": "QUEUED",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/executions/{{execution_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["executions", "{{execution_id}}"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"execution_id\": \"660e8400-e29b-41d4-a716-446655440001\",\n  \"status\": \"QUEUED\"\n}"
+            },
+            {
+              "name": "RUNNING",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/executions/{{execution_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["executions", "{{execution_id}}"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"execution_id\": \"660e8400-e29b-41d4-a716-446655440001\",\n  \"status\": \"RUNNING\"\n}"
+            },
+            {
+              "name": "COMPLETED",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/executions/{{execution_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["executions", "{{execution_id}}"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"execution_id\": \"660e8400-e29b-41d4-a716-446655440001\",\n  \"status\": \"COMPLETED\",\n  \"stdout\": \"Number: 0\\nNumber: 1\\nNumber: 2\\nNumber: 3\\nNumber: 4\\n\",\n  \"stderr\": \"\",\n  \"execution_time_ms\": 120\n}"
+            },
+            {
+              "name": "FAILED",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/executions/{{execution_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["executions", "{{execution_id}}"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"execution_id\": \"660e8400-e29b-41d4-a716-446655440001\",\n  \"status\": \"FAILED\",\n  \"stdout\": \"\",\n  \"stderr\": \"SyntaxError: invalid syntax\\n  File \\\"<stdin>\\\", line 1\\n    print('Hello World'\\n\",\n  \"execution_time_ms\": 45\n}"
+            },
+            {
+              "name": "TIMEOUT",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/executions/{{execution_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["executions", "{{execution_id}}"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"execution_id\": \"660e8400-e29b-41d4-a716-446655440001\",\n  \"status\": \"TIMEOUT\",\n  \"stdout\": \"Partial output before timeout...\",\n  \"stderr\": \"\",\n  \"execution_time_ms\": 5000\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Endpoints for retrieving execution status and results."
+    },
+    {
+      "name": "Complete Workflow Examples",
+      "item": [
+        {
+          "name": "Example 1: Python Hello World",
+          "item": [
+            {
+              "name": "1. Create Session",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    const response = pm.response.json();",
+                      "    pm.collectionVariables.set('session_id', response.session_id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"language\": \"python\",\n  \"source_code\": \"print('Hello World')\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/code-sessions",
+                  "host": ["{{base_url}}"],
+                  "path": ["code-sessions"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "2. Execute Code",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 202) {",
+                      "    const response = pm.response.json();",
+                      "    pm.collectionVariables.set('execution_id', response.execution_id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/code-sessions/{{session_id}}/run",
+                  "host": ["{{base_url}}"],
+                  "path": ["code-sessions", "{{session_id}}", "run"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "3. Get Result",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/executions/{{execution_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["executions", "{{execution_id}}"]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Example 2: JavaScript with Loop",
+          "item": [
+            {
+              "name": "1. Create Session",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    const response = pm.response.json();",
+                      "    pm.collectionVariables.set('session_id', response.session_id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"language\": \"javascript\",\n  \"source_code\": \"for (let i = 0; i < 3; i++) { console.log('Count:', i); }\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/code-sessions",
+                  "host": ["{{base_url}}"],
+                  "path": ["code-sessions"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "2. Update Code",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"language\": \"javascript\",\n  \"source_code\": \"// Updated version\\nfor (let i = 0; i < 5; i++) {\\n    console.log('Number:', i);\\n}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/code-sessions/{{session_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["code-sessions", "{{session_id}}"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "3. Execute Updated Code",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 202) {",
+                      "    const response = pm.response.json();",
+                      "    pm.collectionVariables.set('execution_id', response.execution_id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/code-sessions/{{session_id}}/run",
+                  "host": ["{{base_url}}"],
+                  "path": ["code-sessions", "{{session_id}}", "run"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "4. Get Result",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/executions/{{execution_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["executions", "{{execution_id}}"]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Example 3: Error Handling",
+          "item": [
+            {
+              "name": "1. Create Session with Error",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    const response = pm.response.json();",
+                      "    pm.collectionVariables.set('session_id', response.session_id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"language\": \"python\",\n  \"source_code\": \"print('Missing closing quote)\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/code-sessions",
+                  "host": ["{{base_url}}"],
+                  "path": ["code-sessions"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "2. Execute (Will Fail)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 202) {",
+                      "    const response = pm.response.json();",
+                      "    pm.collectionVariables.set('execution_id', response.execution_id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/code-sessions/{{session_id}}/run",
+                  "host": ["{{base_url}}"],
+                  "path": ["code-sessions", "{{session_id}}", "run"]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "3. Get Error Result",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/executions/{{execution_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["executions", "{{execution_id}}"]
+                }
+              },
+              "response": []
+            }
+          ]
+        }
+      ],
+      "description": "Complete workflow examples demonstrating typical usage patterns."
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ]
+}

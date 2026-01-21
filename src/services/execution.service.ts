@@ -9,11 +9,18 @@ export const getExecutionResult = async (executionId: string): Promise<Execution
     throw new NotFoundError(`Execution with ID ${executionId} not found`);
   }
 
-  return {
+  // Always include stdout/stderr as strings (empty if null) for COMPLETED/FAILED/TIMEOUT status
+  const response: ExecutionResultResponse = {
     execution_id: result.id,
     status: result.status as ExecutionStatus,
-    stdout: result.stdout ?? undefined,
-    stderr: result.stderr ?? undefined,
-    execution_time_ms: result.execution_time_ms ?? undefined,
   };
+
+  // Include execution details for completed/failed/timeout executions
+  if (result.status === 'COMPLETED' || result.status === 'FAILED' || result.status === 'TIMEOUT') {
+    response.stdout = result.stdout ?? '';
+    response.stderr = result.stderr ?? '';
+    response.execution_time_ms = result.execution_time_ms ?? 0;
+  }
+
+  return response;
 };

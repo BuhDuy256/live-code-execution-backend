@@ -6,7 +6,7 @@ export const createCodingSession = async (request: Request, response: Response, 
   try {
     const { language } = request.body as unknown as CreateSessionBody;
     const result = await CodeSessionService.createNewCodingSession(language);
-    response.status(200).json(result);
+    response.status(201).json(result);
   } catch (error) {
     next(error);
   }
@@ -35,7 +35,7 @@ export const executeCodeInSession = async (request: Request, response: Response,
 
     const result = await CodeSessionService.executeCode(session_id);
 
-    response.status(200).json(result);
+    response.status(202).json(result);
   } catch (error) {
     next(error);
   }
