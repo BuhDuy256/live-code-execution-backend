@@ -1,13 +1,14 @@
 import { Router } from 'express';
 import { createCodingSession, updateCodingSession, executeCodeInSession, closeCodingSession } from '../controllers/codeSession.controller';
 import { validate } from '../middlewares/validate.middleware';
-import { patchSessionBodySchema, sessionIdParamsSchema } from '../types/requests';
+import { createSessionBodySchema, patchSessionBodySchema, sessionIdParamsSchema } from '../types/requests';
 
 const router = Router();
 
 // POST /code-sessions - Create a new live coding session & Initialize language, template code, and environment
 router.post(
   "/",
+  validate(createSessionBodySchema, 'body'),
   createCodingSession
 );
 

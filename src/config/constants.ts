@@ -35,8 +35,22 @@ console.log('Hello, World!');
   python: {
     fileName: "main.py",
     command: "python3",
-    args: [] as string[],
-    memoryArgs: (_memoryMB: number) => [], // Python has no native memory limit flag
+    args: ["-c"] as string[],  // Use -c flag to run inline code with wrapper
+    memoryArgs: (_memoryMB: number) => [], // Handled via wrapper injection
+    memoryLimitWrapper: (memoryMB: number, userCode: string) => {
+      // Inject resource limit at runtime (Linux/Unix only)
+      return `import resource, sys
+try:
+    # Set memory limit (RLIMIT_AS = Address Space)
+    limit_bytes = ${memoryMB} * 1024 * 1024
+    resource.setrlimit(resource.RLIMIT_AS, (limit_bytes, limit_bytes))
+except (ValueError, OSError):
+    # Windows or insufficient permissions - skip limit
+    pass
+
+# User code below
+${userCode}`;
+    },
     template: `# Python Template
 print('Hello, World!')
 
@@ -119,6 +133,9 @@ export const WORKER_CONFIG = {
   CONCURRENCY: 5,                     // Process 5 jobs concurrently
   RATE_LIMIT_MAX: 10,                 // Process max 10 jobs
   RATE_LIMIT_DURATION_MS: 1000,       // Per 1 second
+  // Stalled job detection (worker crash recovery)
+  STALLED_INTERVAL_MS: 30000,         // Check for stuck jobs every 30 seconds
+  MAX_STALLED_COUNT: 2,               // Retry job max 2 times if worker crashes
 } as const;
 
 /**

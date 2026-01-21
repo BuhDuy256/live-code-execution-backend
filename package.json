@@ -16,6 +16,9 @@
     "test:spam:docker": "cross-env API_URL=http://localhost:3000 ts-node tests/integration/spam-protection.test.ts",
     "test:race": "ts-node tests/integration/race-condition.test.ts",
     "test:race:docker": "cross-env API_URL=http://localhost:3000 ts-node tests/integration/race-condition.test.ts",
+    "test:limits": "ts-node tests/integration/resource-limits.test.ts",
+    "test:limits:docker": "cross-env API_URL=http://localhost:3000 ts-node tests/integration/resource-limits.test.ts",
+    "test:all": "npm run test:race && npm run test:spam && npm run test:limits",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix"
   },

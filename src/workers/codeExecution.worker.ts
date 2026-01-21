@@ -79,6 +79,10 @@ export const codeExecutionWorker = new Worker<CodeExecutionJobData>(
       max: WORKER_CONFIG.RATE_LIMIT_MAX,
       duration: WORKER_CONFIG.RATE_LIMIT_DURATION_MS,
     },
+    // Stalled job detection - handles worker crashes
+    lockDuration: WORKER_CONFIG.STALLED_INTERVAL_MS,  // How long a job can be locked before considering it stalled
+    stalledInterval: WORKER_CONFIG.STALLED_INTERVAL_MS,  // Check for stalled jobs every 30s
+    maxStalledCount: WORKER_CONFIG.MAX_STALLED_COUNT,    // Mark failed after 2 stalled checks
   },
 );
 
@@ -88,6 +92,10 @@ codeExecutionWorker.on("completed", (job) => {
 
 codeExecutionWorker.on("failed", (job, err) => {
   console.error(`Job ${job?.id} failed:`, err.message);
+});
+
+codeExecutionWorker.on("stalled", (jobId) => {
+  console.warn(`Job ${jobId} stalled - worker may have crashed. BullMQ will retry automatically.`);
 });
 
 codeExecutionWorker.on("error", (err) => {

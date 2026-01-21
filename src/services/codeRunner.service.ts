@@ -26,12 +26,25 @@ export const runCodeInSandbox = async (
   try {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "exec-"));
     const langConfig = getLanguageConfig(language);
-    const filePath = path.join(tmpDir, langConfig.fileName);
-    await fs.writeFile(filePath, sourceCode);
+    const memoryLimit = options.memoryLimit || 128;
+
+    // Handle Python's memory limit wrapper (uses -c flag with inline code)
+    let commandArgs: string[];
+
+    if (language === 'python' && 'memoryLimitWrapper' in langConfig) {
+      // Python: inject memory limit wrapper and use -c to execute inline
+      const wrapper = (langConfig as any).memoryLimitWrapper(memoryLimit, sourceCode);
+      commandArgs = [...langConfig.args, wrapper];
+    } else {
+      // JavaScript/Java: write to file and use memory flags
+      const filePath = path.join(tmpDir, langConfig.fileName);
+      await fs.writeFile(filePath, sourceCode);
+      const memoryArgs = langConfig.memoryArgs(memoryLimit);
+      commandArgs = [...memoryArgs, ...langConfig.args, filePath];
+    }
 
     return await new Promise((resolve) => {
-      const memoryArgs = langConfig.memoryArgs(options.memoryLimit || 128);
-      const child = spawn(langConfig.command, [...memoryArgs, ...langConfig.args, filePath]);
+      const child = spawn(langConfig.command, commandArgs);
 
       let stdout = "";
       let stderr = "";

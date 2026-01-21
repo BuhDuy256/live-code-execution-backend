@@ -1,6 +1,8 @@
 export {
+  createSessionBodySchema,
   patchSessionBodySchema,
   sessionIdParamsSchema,
+  type CreateSessionBody,
   type PatchSessionBody,
   type SessionIdParams,
 } from "./codeSession";

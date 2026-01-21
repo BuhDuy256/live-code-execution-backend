@@ -1,17 +1,22 @@
 import { z } from "zod";
+import { SUPPORTED_LANGUAGES } from "../../../config/constants";
 
 /**
  * Request schema for POST /code-sessions
  */
 export const createSessionBodySchema = z.object({
-  language: z.string().min(1, "Language is required"),
+  language: z.enum(['javascript', 'python', 'java'] as const, {
+    message: `Language must be one of: ${SUPPORTED_LANGUAGES.join(', ')}`
+  }),
 });
 
 /**
  * Request schema for PATCH /code-sessions/{session_id}
  */
 export const patchSessionBodySchema = z.object({
-  language: z.string().min(1, "Language is required"),
+  language: z.enum(['javascript', 'python', 'java'] as const, {
+    message: `Language must be one of: ${SUPPORTED_LANGUAGES.join(', ')}`
+  }),
   source_code: z.string().optional().default(""),
 });
 
