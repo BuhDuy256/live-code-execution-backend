@@ -6,7 +6,8 @@ CREATE TABLE code_sessions (
   source_code TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL DEFAULT 'ACTIVE',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  CHECK (status IN ('ACTIVE', 'INACTIVE'))
 );
 
 CREATE INDEX idx_code_sessions_user_id ON code_sessions(user_id);

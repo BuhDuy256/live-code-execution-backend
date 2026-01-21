@@ -40,3 +40,15 @@ export const executeCodeInSession = async (request: Request, response: Response,
     next(error);
   }
 };
+
+export const closeCodingSession = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { session_id } = request.params as unknown as SessionIdParams;
+
+    const result = await CodeSessionService.closeSession(session_id);
+
+    response.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};

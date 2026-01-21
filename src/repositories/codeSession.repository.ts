@@ -23,3 +23,9 @@ export const updateCodeSession = async (session_id: string, language: string, ne
     source_code: newCode,
   }).where({ id: session_id });
 }
+
+export const closeCodeSession = async (session_id: string) => {
+  await db('code_sessions').update({
+    status: 'INACTIVE',
+  }).where({ id: session_id });
+}

@@ -30,7 +30,8 @@ export const runCodeInSandbox = async (
     await fs.writeFile(filePath, sourceCode);
 
     return await new Promise((resolve) => {
-      const child = spawn(langConfig.command, [...langConfig.args, filePath]);
+      const memoryArgs = langConfig.memoryArgs(options.memoryLimit || 128);
+      const child = spawn(langConfig.command, [...memoryArgs, ...langConfig.args, filePath]);
 
       let stdout = "";
       let stderr = "";

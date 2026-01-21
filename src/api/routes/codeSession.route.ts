@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createCodingSession, updateCodingSession, executeCodeInSession } from '../controllers/codeSession.controller';
+import { createCodingSession, updateCodingSession, executeCodeInSession, closeCodingSession } from '../controllers/codeSession.controller';
 import { validate } from '../middlewares/validate.middleware';
 import { patchSessionBodySchema, sessionIdParamsSchema } from '../types/requests';
 
@@ -24,6 +24,13 @@ router.post(
   "/:session_id/run",
   validate(sessionIdParamsSchema, 'params'),
   executeCodeInSession
+);
+
+// DELETE /code-sessions/:session_id - Close a coding session
+router.delete(
+  "/:session_id",
+  validate(sessionIdParamsSchema, 'params'),
+  closeCodingSession
 );
 
 export { router as codeSessionRouter };

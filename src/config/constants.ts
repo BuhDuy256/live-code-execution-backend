@@ -24,6 +24,7 @@ export const LANGUAGE_CONFIG = {
     fileName: "main.js",
     command: "node",
     args: [] as string[],
+    memoryArgs: (memoryMB: number) => [`--max-old-space-size=${memoryMB}`],
     template: `// JavaScript Template
 console.log('Hello, World!');
 
@@ -35,6 +36,7 @@ console.log('Hello, World!');
     fileName: "main.py",
     command: "python3",
     args: [] as string[],
+    memoryArgs: (_memoryMB: number) => [], // Python has no native memory limit flag
     template: `# Python Template
 print('Hello, World!')
 
@@ -46,6 +48,7 @@ print('Hello, World!')
     fileName: "Main.java",
     command: "java",
     args: [] as string[],
+    memoryArgs: (memoryMB: number) => [`-Xmx${memoryMB}m`],
     template: `// Java Template
 public class Main {
     public static void main(String[] args) {

@@ -2,7 +2,7 @@ import { SessionResponse, RunCodeResponse } from "../api/types/responses";
 import * as CodeSessionRepository from "../repositories/codeSession.repository";
 import * as ExecutionRepository from "../repositories/execution.repository";
 import { codeExecutionQueue } from "../queues";
-import { TooManyRequestsError, ConflictError, NotFoundError } from "../errors";
+import { TooManyRequestsError, ConflictError, NotFoundError, ForbiddenError } from "../errors";
 import { API_RATE_LIMIT, AUTOSAVE_PROTECTION } from "../config/constants";
 import { createRedisConnection } from "../config/redis";
 
@@ -83,6 +83,10 @@ export const executeCode = async (sessionId: string): Promise<RunCodeResponse> =
     throw new NotFoundError("Code session not found");
   }
 
+  if (codeSession.status !== 'ACTIVE') {
+    throw new ForbiddenError("Cannot execute code in an inactive session");
+  }
+
   const activeExecution = await ExecutionRepository.getActiveExecutionForSession(sessionId);
   if (activeExecution) {
     throw new ConflictError(
@@ -159,3 +163,17 @@ export const executeCode = async (sessionId: string): Promise<RunCodeResponse> =
     status: "QUEUED"
   }
 }
+
+export const closeSession = async (sessionId: string): Promise<SessionResponse> => {
+  const existingSession = await CodeSessionRepository.getCodeSessionById(sessionId);
+  if (!existingSession) {
+    throw new NotFoundError("Code session not found");
+  }
+
+  await CodeSessionRepository.closeCodeSession(sessionId);
+
+  return {
+    session_id: sessionId,
+    status: "INACTIVE",
+  };
+};
