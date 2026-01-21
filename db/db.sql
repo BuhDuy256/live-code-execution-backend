@@ -37,6 +37,12 @@ CREATE INDEX idx_code_executions_session_id ON code_executions(session_id);
 CREATE INDEX idx_code_executions_status ON code_executions(status);
 CREATE INDEX idx_code_executions_queued_at ON code_executions(queued_at DESC);
 
+-- Enforce only 1 active execution (QUEUED or RUNNING) per session
+-- This prevents race conditions when multiple requests try to create executions simultaneously
+CREATE UNIQUE INDEX idx_active_execution_per_session 
+ON code_executions(session_id) 
+WHERE status IN ('QUEUED', 'RUNNING');
+
 CREATE TRIGGER update_code_sessions_timestamp 
 AFTER UPDATE ON code_sessions
 BEGIN

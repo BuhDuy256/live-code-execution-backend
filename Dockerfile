@@ -45,10 +45,6 @@ COPY --from=builder /app/package*.json ./
 COPY db ./db
 COPY scripts ./scripts
 
-# Copy entrypoint script
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
 # Create directory for SQLite database
 RUN mkdir -p /app/data
 
@@ -58,13 +54,6 @@ ENV NODE_ENV=production \
 
 # Expose port
 EXPOSE 3000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
-
-# Set entrypoint
-ENTRYPOINT ["docker-entrypoint.sh"]
 
 # Run the application
 CMD ["node", "dist/index.js"]

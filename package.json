@@ -14,6 +14,8 @@
     "db:reset": "ts-node scripts/init-db.ts --force",
     "test:spam": "ts-node tests/integration/spam-protection.test.ts",
     "test:spam:docker": "cross-env API_URL=http://localhost:3000 ts-node tests/integration/spam-protection.test.ts",
+    "test:race": "ts-node tests/integration/race-condition.test.ts",
+    "test:race:docker": "cross-env API_URL=http://localhost:3000 ts-node tests/integration/race-condition.test.ts",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix"
   },
