@@ -24,12 +24,12 @@ services:
       dockerfile: Dockerfile
     container_name: live-code-api
     ports:
-      - "3000:3000"
+      - "${PORT:-3000}:3000"
     environment:
-      - NODE_ENV=production
-      - PORT=3000
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=${PORT:-3000}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
     volumes:
       - ./data:/app/data  # SQLite database persistence
     depends_on:
@@ -46,9 +46,9 @@ services:
     container_name: live-code-worker
     command: node dist/workers/index.js
     environment:
-      - NODE_ENV=production
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - NODE_ENV=${NODE_ENV:-production}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
     volumes:
       - ./data:/app/data  # Share SQLite database with API
     depends_on:

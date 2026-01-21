@@ -1,13 +1,12 @@
 import knex from "knex";
 import path from "path";
 
-// Support both development and production environments
-const isProduction = process.env['NODE_ENV'] === 'production';
-const dbPath = process.env['DB_PATH'] ||
-  (isProduction
-    ? path.join(__dirname, "..", "..", "data", "database.db")
-    : path.join(__dirname, "..", "..", "data", "database.db")
-  );
+// Resolve DB_PATH to absolute path
+// If DB_PATH is relative, resolve it from cwd; if absolute, use as-is
+const rawPath = process.env['DB_PATH'] || './data/database.db';
+const dbPath = path.isAbsolute(rawPath) ? rawPath : path.resolve(process.cwd(), rawPath);
+
+console.log(`[Database] Using database at: ${dbPath}`);
 
 const db = knex({
   client: "sqlite3",

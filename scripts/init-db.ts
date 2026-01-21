@@ -2,12 +2,13 @@ import Database from 'better-sqlite3';
 import * as fs from 'fs';
 import * as path from 'path';
 
-// Support both development and production paths
-const isProduction = process.env['NODE_ENV'] === 'production';
-const baseDir = isProduction ? path.join(__dirname, '..', '..') : path.join(__dirname, '..');
+// Resolve paths to absolute
+const rawDbPath = process.env['DB_PATH'] || './data/database.db';
+const DB_PATH = path.isAbsolute(rawDbPath) ? rawDbPath : path.resolve(process.cwd(), rawDbPath);
+const SQL_PATH = path.resolve(process.cwd(), 'db', 'db.sql');
 
-const DB_PATH = process.env['DB_PATH'] || path.join(baseDir, 'data', 'database.db');
-const SQL_PATH = path.join(baseDir, 'db', 'db.sql');
+console.log(`[Init DB] Database path: ${DB_PATH}`);
+console.log(`[Init DB] SQL schema path: ${SQL_PATH}`);
 
 // Check if --force flag is provided to drop existing tables
 const forceReset = process.argv.includes('--force');
