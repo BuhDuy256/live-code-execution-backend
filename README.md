@@ -193,7 +193,9 @@ docker-compose down -v
 - `npm run lint` - Run ESLint
 - `npm run lint:fix` - Fix ESLint issues
 
-## Architecture diagram or explanation
+## Architecture diagram
+
+![Architecture diagram](docs/images/architecture-diagram.png)
 
 ## API Documentation
 
@@ -400,6 +402,6 @@ You can add more languages by editing the `LANGUAGE_CONFIG` in [src/config/const
 }
 ```
 
-## Design decisions and trade-offs 
+## Design decisions and trade-offs
 
 ## What you would improve with more time
