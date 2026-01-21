@@ -6,3 +6,4 @@ export { UnauthorizedError } from './UnauthorizedError';
 export { ForbiddenError } from './ForbiddenError';
 export { ConflictError } from './ConflictError';
 export { InternalServerError } from './InternalServerError';
+export { TooManyRequestsError } from './TooManyRequestsError';

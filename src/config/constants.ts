@@ -87,7 +87,7 @@ export const EXECUTION_LIMITS = {
  * Applied at controller layer to prevent spam before queuing
  */
 export const API_RATE_LIMIT = {
-  MAX_REQUESTS_PER_MINUTE: 10,        // Max executions per session per minute
+  MAX_REQUESTS_PER_MINUTE: 5,         // Max executions per session per minute
   COOLDOWN_BETWEEN_RUNS_MS: 2000,     // Minimum 2s between runs
 } as const;
 

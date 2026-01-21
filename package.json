@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-    "build": "tsc",
+    "build": "tsc && tsc -p tsconfig.scripts.json",
     "start": "node dist/index.js",
     "db:init": "ts-node scripts/init-db.ts",
     "db:reset": "ts-node scripts/init-db.ts --force",
