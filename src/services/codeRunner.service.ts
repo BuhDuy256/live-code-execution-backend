@@ -79,12 +79,13 @@ export const runCodeInSandbox = async (
         });
       });
 
-      child.on("error", (err) => {
+      child.on("error", (_err) => {
         clearTimeout(timer);
         // Always resolve, never reject in execution system
+        // Sanitize error - don't expose command or path details
         resolve({
           stdout: "",
-          stderr: `System error: ${err.message}`,
+          stderr: "Unable to execute code",
           exitCode: -1,
         });
       });

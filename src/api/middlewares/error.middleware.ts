@@ -47,11 +47,9 @@ export const errorHandler = (
   }
 
   // Default to 500 Internal Server Error
+  // Never expose stack traces or internal error details to users
   response.status(500).json({
     success: false,
-    message: process.env["NODE_ENV"] === 'production'
-      ? 'Internal server error'
-      : error.message,
-    ...(process.env["NODE_ENV"] !== 'production' && { stack: error.stack }),
+    message: 'Internal server error',
   });
 };

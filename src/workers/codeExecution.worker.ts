@@ -57,8 +57,13 @@ export const codeExecutionWorker = new Worker<CodeExecutionJobData>(
       const isTimeout = error?.name === "TimeoutError";
       const status = isTimeout ? ExecutionStatus.TIMEOUT : ExecutionStatus.FAILED;
 
+      // Sanitize error message - never expose internal system details
+      const safeErrorMessage = isTimeout
+        ? "Execution timed out"
+        : "System error occurred during execution";
+
       await ExecutionRepository.updateExecutionStatus(executionId, status, {
-        error_message: error?.message || "Unknown system error",
+        error_message: safeErrorMessage,
         stderr: null,
       });
 

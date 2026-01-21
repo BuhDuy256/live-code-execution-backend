@@ -1,0 +1,58 @@
+# Dependencies
+node_modules
+npm-debug.log
+package-lock.json
+
+# Build output
+dist
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Testing
+coverage
+.nyc_output
+*.test.ts
+*.spec.ts
+
+# Documentation (optional - remove if you want docs in image)
+docs
+personal_docs
+README.md
+*.md
+!package.json
+
+# Database files (SQLite will be created at runtime)
+database.db
+database.db-journal
+*.db
+*.db-shm
+*.db-wal
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs
+*.log
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore

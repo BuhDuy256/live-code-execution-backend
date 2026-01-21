@@ -1,5 +1,6 @@
-import { CODE_TEMPLATES } from '../config/constants';
+import { CODE_TEMPLATES, type SupportedLanguage } from '../config/constants';
 
 export const getTemplateByLanguage = (language: string): string => {
-  return CODE_TEMPLATES[language.toLowerCase()] || '';
+  const normalizedLanguage = language.toLowerCase() as SupportedLanguage;
+  return CODE_TEMPLATES[normalizedLanguage] || '';
 };
