@@ -218,19 +218,26 @@ docker-compose down -v
 
 ### Available Scripts
 
-- `npm run dev` - Start development server with auto-reload
-- `npm run build` - Build TypeScript to JavaScript
+**Development:**
+
+- `npm run dev` - Start development server
+- `npm run build` - Build TypeScript
 - `npm start` - Start production server
+
+**Database:**
+
 - `npm run db:init` - Initialize database
-- `npm run db:reset` - Reset database (drops all data)
-- `npm run test:race` - Run race condition tests (local)
-- `npm run test:spam` - Run spam protection tests (local)
-- `npm run test:limits` - Run resource limits tests (local)
-- `npm run test:all` - Run all integration tests (local)
-- `npm run test:race:docker` - Run race condition tests (Docker)
-- `npm run test:spam:docker` - Run spam protection tests (Docker)
-- `npm run test:limits:docker` - Run resource limits tests (Docker)
-- `npm run test:all:docker` - Run all integration tests (Docker)
+- `npm run db:reset` - Reset database
+
+**Testing:**
+
+- `npm run test:all` / `npm run test:all:docker` - Run all tests
+- `npm run test:race` / `npm run test:race:docker` - Race condition tests
+- `npm run test:spam` / `npm run test:spam:docker` - Spam protection tests
+- `npm run test:limits` / `npm run test:limits:docker` - Resource limits tests
+
+**Code Quality:**
+
 - `npm run lint` - Run ESLint
 - `npm run lint:fix` - Fix ESLint issues
 
@@ -460,30 +467,21 @@ You can add more languages by editing the `LANGUAGE_CONFIG` in [src/config/const
 
 ### Autosave Spam Protection
 
-**Problem:** Users typing rapidly can generate hundreds of autosave requests per minute. Without throttling, each keystroke would trigger a database write, overwhelming SQLite and degrading performance.
+**Problem:** Users typing rapidly can generate hundreds of autosave requests per minute, overwhelming SQLite.
 
-**Decision:** Use adaptive throttling with three strategies:
+**Decision:** Use adaptive throttling: max 1 write/second per session, only save latest code, force write if pending >5 seconds.
 
-- **Write throttling** — Maximum 1 database write per second per session
-- **Request coalescing** — Only the latest code is saved; previous pending autosaves are cancelled
-- **Forced write on timeout** — If autosaves have been pending for >5 seconds, force a write to prevent data loss
-
-**Trade-off:** Autosave state (pending writes) is stored in memory. If the API crashes, pending autosaves are lost, but the last successfully saved version remains in the database.
+**Trade-off:** Pending writes stored in memory. If API crashes, pending autosaves are lost (last saved version remains in database).
 
 ---
 
 ### Idempotency Handling
 
-**Problem:** Users may click "Run" multiple times quickly, or buggy clients may send duplicate requests. This could create duplicate executions.
+**Problem:** Users may click "Run" multiple times quickly, creating duplicate executions.
 
-**Decision:** Use multiple layers of protection:
+**Decision:** Four layers of protection: active execution check, cooldown period, rate limit (5/minute), and database constraint.
 
-1. **Active execution check** — Reject if session already has a `QUEUED` or `RUNNING` execution
-2. **Cooldown period** — Short cooldown after each execution
-3. **Rate limit** — Maximum 5 executions per minute per session
-4. **Database constraint** — SQLite rejects duplicate execution IDs as a fallback
-
-**Trade-off:** Not true exactly-once execution. If the Worker crashes after running code but before updating the database, BullMQ retries may cause the code to run again.
+**Trade-off:** Not true exactly-once execution. Worker crashes before database update may cause code to run again on retry.
 
 ---
 
@@ -574,7 +572,7 @@ I would add:
 ### 7. Dead Letter Queue (DLQ) for Failed Jobs
 
 **Current**: Failed jobs are stored in the database with no reprocessing  
-**Out of scope**: Automatic DLQ with alerting and reprocessing
+**Improvement**: Automatic DLQ with alerting and reprocessing
 
 I would add:
 
