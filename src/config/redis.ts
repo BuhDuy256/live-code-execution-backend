@@ -11,7 +11,7 @@ export const redisOptions: RedisOptions = {
   retryStrategy: (times) => Math.min(times * 50, 2000),
 };
 
-export const createRedisConnection = () => {
+const createRedisConnection = () => {
   const redis = new Redis(redisOptions);
 
   redis.on("connect", () => {
