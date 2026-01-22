@@ -1,0 +1,148 @@
+% Section 4: Design Trade-offs
+
+\section{Design Trade-offs}
+
+\begin{frame}{Trade-off Analysis Framework}
+    \begin{block}{Decision-Making Approach}
+        Every architectural choice involves trade-offs. \\
+        \textbf{Framework:} Problem $\rightarrow$ Decision $\rightarrow$ Benefits vs. Costs
+    \end{block}
+    
+    \begin{exampleblock}{Optimization Priorities}
+        \begin{enumerate}
+            \item \textbf{Simplicity:} Single database, minimal orchestration
+            \item \textbf{Reliability:} Automatic retries, graceful failure handling
+            \item \textbf{Speed:} Async queue, non-blocking API
+            \item \textbf{Safety:} Timeouts, output limits, rate limiting
+        \end{enumerate}
+    \end{exampleblock}
+    
+    \begin{alertblock}{Not Optimized For}
+        \begin{itemize}
+            \item High availability (single SQLite = single point of failure)
+            \item Horizontal API scaling (SQLite doesn't support concurrent writes well)
+        \end{itemize}
+    \end{alertblock}
+\end{frame}
+
+\begin{frame}{Trade-off \#1: SQLite vs PostgreSQL}
+    \begin{columns}
+        \column{0.48\textwidth}
+        \begin{block}{SQLite (Chosen)}
+            \textbf{Why:}
+            \begin{itemize}
+                \item[\faCheck] Zero setup, file-based
+                \item[\faCheck] Perfect for development
+                \item[\faCheck] Simple deployment
+            \end{itemize}
+            
+            \vspace{0.2cm}
+            \textbf{Cost:}
+            \begin{itemize}
+                \item[\faTimes] Single writer only
+                \item[\faTimes] No concurrent API instances
+                \item[\faTimes] Not production-ready
+            \end{itemize}
+        \end{block}
+        
+        \column{0.48\textwidth}
+        \begin{block}{PostgreSQL (Alternative)}
+            \textbf{Benefits:}
+            \begin{itemize}
+                \item[\faCheck] Concurrent writes
+                \item[\faCheck] Read replicas
+                \item[\faCheck] Connection pooling
+            \end{itemize}
+            
+            \vspace{0.2cm}
+            \textbf{Cost:}
+            \begin{itemize}
+                \item[\faTimes] Complex setup
+                \item[\faTimes] Requires hosting
+                \item[\faTimes] Migration overhead
+            \end{itemize}
+        \end{block}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Trade-off \#2: Child Process vs Docker}
+    \begin{columns}
+        \column{0.48\textwidth}
+        \begin{block}{Child Process (Chosen)}
+            \textbf{Why:}
+            \begin{itemize}
+                \item[\faCheck] Simple, no dependencies
+                \item[\faCheck] Fast startup ($<$50ms)
+                \item[\faCheck] Easy local development
+            \end{itemize}
+            
+            \vspace{0.2cm}
+            \textbf{Cost:}
+            \begin{itemize}
+                \item[\faTimes] Limited isolation
+                \item[\faTimes] OS-level limits only
+                \item[\faTimes] Potential security risks
+            \end{itemize}
+        \end{block}
+        
+        \column{0.48\textwidth}
+        \begin{block}{Docker (Alternative)}
+            \textbf{Benefits:}
+            \begin{itemize}
+                \item[\faCheck] Full sandboxing
+                \item[\faCheck] Network isolation
+                \item[\faCheck] No host access
+            \end{itemize}
+            
+            \vspace{0.2cm}
+            \textbf{Cost:}
+            \begin{itemize}
+                \item[\faTimes] Slower startup ($\sim$500ms)
+                \item[\faTimes] Docker daemon required
+                \item[\faTimes] More complex error handling
+            \end{itemize}
+        \end{block}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Trade-off \#3: Polling vs WebSocket/SSE}
+    \begin{columns}
+        \column{0.48\textwidth}
+        \begin{block}{Polling (Chosen)}
+            \textbf{Why:}
+            \begin{itemize}
+                \item[\faCheck] Simple client code
+                \item[\faCheck] No connection state
+                \item[\faCheck] Stateless API design
+                \item[\faCheck] Works with load balancers
+            \end{itemize}
+            
+            \vspace{0.2cm}
+            \textbf{Cost:}
+            \begin{itemize}
+                \item[\faTimes] Higher latency (poll interval)
+                \item[\faTimes] Unnecessary requests
+                \item[\faTimes] More server load
+            \end{itemize}
+        \end{block}
+        
+        \column{0.48\textwidth}
+        \begin{block}{WebSocket/SSE (Alternative)}
+            \textbf{Benefits:}
+            \begin{itemize}
+                \item[\faCheck] Real-time updates
+                \item[\faCheck] Low latency
+                \item[\faCheck] Better UX
+            \end{itemize}
+            
+            \vspace{0.2cm}
+            \textbf{Cost:}
+            \begin{itemize}
+                \item[\faTimes] Connection management
+                \item[\faTimes] Reconnection logic
+                \item[\faTimes] Scaling complexity
+                \item[\faTimes] Stateful API required
+            \end{itemize}
+        \end{block}
+    \end{columns}
+\end{frame}

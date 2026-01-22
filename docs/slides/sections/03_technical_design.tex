@@ -1,0 +1,156 @@
+% Section 3: Core Technical Design
+
+\section{Core Technical Design}
+
+\begin{frame}{Design Decision: Async Execution with Queue}
+    \begin{block}{Problem}
+        Running user code takes time (1-5 seconds). If API waits, it blocks other requests and degrades performance.
+    \end{block}
+    
+    \begin{exampleblock}{Solution: Queue-Based Architecture}
+        \begin{itemize}
+            \item API adds job to Redis queue and returns \textbf{immediately}
+            \item Separate Worker process dequeues and executes code
+            \item Results written to database for later retrieval
+        \end{itemize}
+    \end{exampleblock}
+    
+    \vspace{0.2cm}
+    
+    \begin{columns}
+        \column{0.5\textwidth}
+        \textbf{Benefits:}
+        \begin{itemize}
+            \item[\faCheck] API stays fast and responsive
+            \item[\faCheck] Independent scaling of API and Workers
+            \item[\faCheck] Automatic retries on failure
+        \end{itemize}
+        
+        \column{0.5\textwidth}
+        \textbf{Trade-offs:}
+        \begin{itemize}
+            \item[\faTimes] Increased system complexity
+            \item[\faTimes] Results not instant (polling required)
+            \item[\faTimes] Redis dependency
+        \end{itemize}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{State Management: Execution Lifecycle}
+    \begin{block}{State Ownership}
+        Clear separation: \textbf{API creates}, \textbf{Worker executes}
+    \end{block}
+    
+    \vspace{0.3cm}
+    
+    \begin{table}
+        \centering
+        \begin{tabular}{|l|l|p{5cm}|}
+            \hline
+            \textbf{State} & \textbf{Set by} & \textbf{Responsibility} \\
+            \hline
+            \texttt{QUEUED} & API & Creates the execution record \\
+            \hline
+            \texttt{RUNNING} & Worker & Picks up the job and starts it \\
+            \hline
+            \texttt{COMPLETED} / \texttt{FAILED} / \texttt{TIMEOUT} & Worker & Writes final result to database \\
+            \hline
+        \end{tabular}
+    \end{table}
+    
+    \vspace{0.3cm}
+    
+    \begin{alertblock}{Database as Source of Truth}
+        SQLite stores authoritative state.
+    \end{alertblock}
+\end{frame}
+
+\begin{frame}{Code Isolation: Sandboxing Strategy}
+    \begin{block}{Problem}
+        User code is \textbf{untrusted}. Must prevent infinite loops, excessive output, and file/network access.
+    \end{block}
+    
+    \vspace{0.3cm}
+    
+    \begin{exampleblock}{Solution: Child Process Isolation}
+        \begin{itemize}
+            \item Run code in separate child process (not main server)
+            \item \textbf{5-second timeout:} Kill process if execution exceeds limit
+            \item \textbf{1MB output limit:} Monitor stdout/stderr in real-time, kill if exceeded
+            \item Process killed immediately with \texttt{SIGKILL} signal
+        \end{itemize}
+    \end{exampleblock}
+    
+    \vspace{0.3cm}
+    
+    \begin{alertblock}{Trade-off}
+        \textbf{Production:} Use Docker or gVisor for stronger security.
+    \end{alertblock}
+\end{frame}
+
+\begin{frame}{Autosave Spam Protection}
+    \begin{block}{Problem}
+        Users typing rapidly generate \textbf{100+ requests/minute}, blocking SQLite.
+    \end{block}
+    
+    \begin{exampleblock}{Solution: Adaptive Throttling}
+        {\small \textbf{Three-layer strategy:}}
+        \begin{enumerate}
+            \item {\small \textbf{Throttling:} Max 1 write/second per session}
+            \item {\small \textbf{Coalescing:} Only save latest code}
+            \item {\small \textbf{Forced write:} If pending $>$ 5s, force write}
+        \end{enumerate}
+    \end{exampleblock}
+    
+    \vspace{0.2cm}
+    
+    \begin{columns}
+        \column{0.5\textwidth}
+        {\small \textbf{Guarantees:}}
+        \begin{itemize}
+            \item[\faCheck] {\small Latest code saved}
+            \item[\faCheck] {\small No delay $>$ 5s}
+        \end{itemize}
+        
+        \column{0.5\textwidth}
+        {\small \textbf{Trade-off:}}
+        \begin{itemize}
+            \item[\faTimes] {\small In-memory state}
+            \item[\faTimes] {\small Lost on crash}
+        \end{itemize}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Execution Environment: Resource Limits}
+    \begin{block}{Protection Mechanisms}
+        Multiple layers of resource enforcement:
+    \end{block}
+    
+    \vspace{0.2cm}
+    
+    \begin{table}
+        \centering
+        \small
+        \begin{tabular}{|p{3.5cm}|p{2cm}|p{4cm}|}
+            \hline
+            \textbf{Resource} & \textbf{Limit} & \textbf{Action} \\
+            \hline
+            Execution time & 5 seconds & Kill $\rightarrow$ \texttt{TIMEOUT} \\
+            \hline
+            Output size & 1 MB & Kill $\rightarrow$ Error \\
+            \hline
+            Concurrent jobs & 5 jobs & Queue \\
+            \hline
+            Executions/session & 5/minute & HTTP 429 \\
+            \hline
+            Cooldown & 2 seconds & Prevent re-run \\
+            \hline
+        \end{tabular}
+    \end{table}
+    
+    \vspace{0.2cm}
+    
+    \begin{alertblock}{Defense in Depth}
+        Multiple limits ensure \textbf{no single user} can overwhelm the system.
+    \end{alertblock}
+\end{frame}

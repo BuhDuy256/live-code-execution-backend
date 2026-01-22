@@ -1,0 +1,127 @@
+% Section 5: Reliability & Scalability
+
+\section{Reliability \& Scalability}
+
+\begin{frame}{Idempotency: Four-Layer Protection}
+    \begin{block}{Problem}
+        Users may click "Run" multiple times quickly. \\
+        System must prevent duplicate executions without rejecting legitimate requests.
+    \end{block}
+    
+    \begin{exampleblock}{Solution: Defense in Depth}
+        \textbf{Layer 1: Active Execution Check} \\
+        {\footnotesize Before creating job, check if session has \texttt{QUEUED} or \texttt{RUNNING} execution.}
+        
+        \vspace{0.2cm}
+        
+        \textbf{Layer 2: Cooldown Period} \\
+        {\footnotesize 2-second cooldown after each execution. Prevents rapid-fire requests.}
+        
+        \vspace{0.2cm}
+        
+        \textbf{Layer 3: Rate Limit} \\
+        {\footnotesize Maximum 5 executions per minute per session. Protects against abuse.}
+        
+        \vspace{0.2cm}
+        
+        \textbf{Layer 4: Database Constraint} \\
+        {\footnotesize SQLite unique constraint on execution ID as last-resort safety net.}
+    \end{exampleblock}
+    
+    \begin{alertblock}{Guarantee}
+        Normal user behavior never triggers duplicate executions. \\
+        Malicious/buggy clients are rate-limited.
+    \end{alertblock}
+\end{frame}
+
+\begin{frame}{Failure Handling: Stalled Job Detection}
+    \begin{block}{Problem}
+        Worker may crash mid-execution. How does system recover?
+    \end{block}
+    
+    \begin{exampleblock}{BullMQ Automatic Recovery}
+        \begin{enumerate}
+            \item Worker marks job as \texttt{RUNNING} and acquires lock (30s duration)
+            \item If worker crashes, lock expires
+            \item BullMQ detects stalled job via \texttt{stalledInterval} check (30s)
+            \item Job automatically retried (up to 3 attempts)
+            \item After exhausting retries $\rightarrow$ \texttt{failed} event $\rightarrow$ DB updated to \texttt{FAILED}
+        \end{enumerate}
+    \end{exampleblock}
+    
+    \vspace{0.3cm}
+    
+    \begin{columns}
+        \column{0.5\textwidth}
+        \textbf{Guarantees:}
+        \begin{itemize}
+            \item[\faCheck] No jobs stuck forever
+            \item[\faCheck] Automatic retry on crash
+        \end{itemize}
+        
+        \column{0.5\textwidth}
+        \textbf{Out of Scope:}
+        \begin{itemize}
+            \item[\faTimes] True exactly-once execution
+            \item[\faTimes] Dead letter queue (DLQ)
+        \end{itemize}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Horizontal Scaling Strategy}
+    \begin{block}{Stateless API Design}
+        No per-request or per-user state in API memory. \\
+        All persistent state in shared storage: Database + Redis (queues, rate limits).
+    \end{block}
+    
+    \vspace{0.3cm}
+    
+    \begin{columns}
+        \column{0.5\textwidth}
+        \textbf{Scaling API Servers:}
+        \begin{itemize}
+            \item Any API instance handles any request
+            \item Load balancer distributes traffic
+            \item \textcolor{red}{\textbf{Bottleneck:}} Database write contention
+            \item \textbf{Solution:} PostgreSQL with row-level locking \& connection pooling
+        \end{itemize}
+        
+        \column{0.5\textwidth}
+        \textbf{Scaling Workers:}
+        \begin{itemize}
+            \item Workers pull jobs from Redis queue
+            \item Each worker: 5 concurrent jobs
+            \item Independent processes (deploy, scale, restart separately)
+            \item \textbf{Throughput:} Linear scaling (until CPU/Redis bottleneck)
+        \end{itemize}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Scalability Bottlenecks \& Mitigations}
+    \begin{table}
+        \centering
+        \footnotesize
+        \begin{tabular}{|p{3cm}|p{3.5cm}|p{4.5cm}|}
+            \hline
+            \textbf{Bottleneck} & \textbf{Current Mitigation} & \textbf{Production Solution} \\
+            \hline
+            SQLite write conflicts & Autosave throttling, single DB & PostgreSQL with connection pooling \\
+            \hline
+            Redis memory growth & Auto-cleanup (1h, 1000 jobs) & Max queue size limit, priority queues \\
+            \hline
+            Worker CPU overload & Concurrency limit (5 jobs) & Kubernetes auto-scaling, resource quotas \\
+            \hline
+            Long execution times & 5-second global timeout & Per-language timeouts, adaptive limits \\
+            \hline
+            Excessive output & 1MB limit, kill process & Stream output, early truncation \\
+            \hline
+        \end{tabular}
+    \end{table}
+    
+    \vspace{0.3cm}
+    
+    \begin{alertblock}{Design for Current Needs, Plan for Growth}
+        Current architecture handles \textbf{moderate load} (100s of users). \\
+        Clear migration path documented for production scale (1000s of users).
+    \end{alertblock}
+\end{frame}

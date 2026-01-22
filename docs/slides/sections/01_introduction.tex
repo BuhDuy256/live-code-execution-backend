@@ -1,0 +1,55 @@
+% Section 1: Introduction
+
+\section{Introduction}
+
+\begin{frame}{Problem Statement}
+    \begin{block}{The Challenge}
+        Build a backend service that allows users to write and execute code in multiple programming languages remotely.
+    \end{block}
+    
+    \vspace{0.5cm}
+    
+    \textbf{Key Requirements:}
+    \begin{itemize}
+        \item \faCheckCircle\ Support multiple languages (JavaScript, Python, Java)
+        \item \faCheckCircle\ Handle concurrent users safely
+        \item \faCheckCircle\ Protect against malicious code (timeouts, resource limits)
+        \item \faCheckCircle\ Provide session management with autosave
+        \item \faCheckCircle\ Return execution results asynchronously
+    \end{itemize}
+    
+    \vspace{0.3cm}
+    
+    \begin{alertblock}{Core Technical Challenge}
+        How do we execute untrusted user code safely, reliably, and at scale?
+    \end{alertblock}
+\end{frame}
+
+\begin{frame}{Project Overview}
+    \begin{columns}
+        \column{0.5\textwidth}
+        \textbf{What Was Built:}
+        \begin{itemize}
+            \item RESTful API for code sessions
+            \item Queue-based async execution
+            \item Multi-language support
+            \item Rate limiting \& spam protection
+            \item Session state management
+        \end{itemize}
+        
+        \column{0.5\textwidth}
+        \textbf{Technology Stack:}
+        \begin{itemize}
+            \item \textbf{Runtime:} Node.js + TypeScript
+            \item \textbf{Queue:} Redis + BullMQ
+            \item \textbf{Database:} SQLite
+            \item \textbf{Architecture:} API + Worker pattern
+        \end{itemize}
+    \end{columns}
+    
+    \vspace{0.5cm}
+    
+    \begin{exampleblock}{Design Philosophy}
+        Prioritize \textbf{simplicity} and \textbf{reliability} over premature optimization.
+    \end{exampleblock}
+\end{frame}

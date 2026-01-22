@@ -1,0 +1,34 @@
+% Section 2: System Architecture
+
+\section{System Architecture}
+
+\begin{frame}{High-Level Architecture}
+    \begin{center}
+        \begin{tikzpicture}[
+            node distance=2.5cm,
+            component/.style={rectangle, draw, fill=blue!20, text width=2.5cm, text centered, rounded corners, minimum height=1.2cm},
+            storage/.style={cylinder, draw, fill=green!20, text width=2cm, text centered, minimum height=1cm, aspect=0.3},
+            arrow/.style={->, >=stealth, thick}
+        ]
+            % Nodes
+            \node[component] (api) {API Server\\(Express)};
+            \node[storage, right of=api, xshift=2cm] (redis) {Redis\\Queue};
+            \node[component, right of=redis, xshift=2cm] (worker) {Worker\\Process};
+            \node[storage, below of=api, yshift=-0.5cm] (db) {SQLite\\Database};
+            
+            % Arrows
+            \draw[arrow] (api) -- node[above] {enqueue} (redis);
+            \draw[arrow] (redis) -- node[above] {dequeue} (worker);
+            \draw[arrow] (api) -- node[left] {write} (db);
+            \draw[arrow] (worker) -- node[right] {update} (db);
+        \end{tikzpicture}
+    \end{center}
+    
+    \begin{block}{Three-Component Design}
+        \begin{itemize}
+            \item \textbf{API Server}: Handles HTTP requests, manages sessions, enqueues jobs
+            \item \textbf{Redis Queue}: Decouples API from execution, enables async processing
+            \item \textbf{Worker Process}: Executes code in isolated environment, updates results
+        \end{itemize}
+    \end{block}
+\end{frame}

@@ -1,0 +1,96 @@
+% Section 6: Conclusion
+
+\section{Conclusion}
+
+\begin{frame}{What Was Achieved}
+    \begin{block}{Successfully Implemented}
+        \begin{itemize}
+            \item \faCheckCircle\ \textbf{Async queue-based execution} with Redis + BullMQ
+            \item \faCheckCircle\ \textbf{Multi-language support} (JavaScript, Python, Java)
+            \item \faCheckCircle\ \textbf{Session management} with autosave and throttling
+            \item \faCheckCircle\ \textbf{Code isolation} with timeout and output limits
+            \item \faCheckCircle\ \textbf{Idempotency protection} with 4-layer defense
+            \item \faCheckCircle\ \textbf{Automatic failure recovery} via BullMQ retry logic
+            \item \faCheckCircle\ \textbf{Scalable worker architecture} with horizontal scaling
+        \end{itemize}
+    \end{block}
+\end{frame}
+
+\begin{frame}{Production Readiness Gaps}
+    \begin{alertblock}{What Would Be Improved with More Time}
+        \textbf{1. Stronger Container Isolation} \\
+        {\footnotesize Replace child processes with Docker or gVisor for full sandboxing}
+        
+        \vspace{0.2cm}
+        
+        \textbf{2. PostgreSQL Migration} \\
+        {\footnotesize Enable concurrent writes, read replicas, and horizontal API scaling}
+        
+        \vspace{0.2cm}
+        
+        \textbf{3. Observability} \\
+        {\footnotesize Structured logging, Prometheus metrics, BullMQ dashboard, alerting}
+        
+        \vspace{0.2cm}
+        
+        \textbf{4. Real-time Updates} \\
+        {\footnotesize WebSocket/SSE for pushing execution status instead of polling}
+        
+        \vspace{0.2cm}
+        
+        \textbf{5. Advanced Queue Management} \\
+        {\footnotesize Max queue size, priority queues, per-language isolation, backpressure}
+    \end{alertblock}
+\end{frame}
+
+% \begin{frame}{Key Technical Lessons}
+%     \begin{block}{System Design Thinking}
+%         \begin{enumerate}
+%             \item \textbf{Decouple components for independent scaling} \\
+%             {\footnotesize Queue-based architecture allows API and Workers to scale separately}
+            
+%             \vspace{0.2cm}
+            
+%             \item \textbf{Database as single source of truth} \\
+%             {\footnotesize Avoid distributed state synchronization complexity}
+            
+%             \vspace{0.2cm}
+            
+%             \item \textbf{Defense in depth for critical operations} \\
+%             {\footnotesize Multiple layers prevent single point of failure (idempotency, rate limiting)}
+            
+%             \vspace{0.2cm}
+            
+%             \item \textbf{Trade-offs are conscious decisions} \\
+%             {\footnotesize Every choice (SQLite, polling, child process) has documented rationale}
+            
+%             \vspace{0.2cm}
+            
+%             \item \textbf{Design for current needs, plan for growth} \\
+%             {\footnotesize Simple now, clear migration path to production scale}
+%         \end{enumerate}
+%     \end{block}
+% \end{frame}
+
+\begin{frame}{Thank You}
+    \begin{center}
+        \Huge Live Code Execution Backend
+        
+        \vspace{0.5cm}
+        
+        \Large A Case Study in Scalable System Design
+        
+        \vspace{1cm}
+        
+        \normalsize
+        \textbf{GitHub:} \texttt{github.com/BuhDuy256/live-code-execution-backend}
+        
+        \vspace{0.3cm}
+        
+        \textbf{Tech Stack:} Node.js, TypeScript, Redis, BullMQ, SQLite
+        
+        \vspace{1cm}
+        
+        \large \textit{Questions?}
+    \end{center}
+\end{frame}

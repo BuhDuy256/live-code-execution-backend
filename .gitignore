@@ -146,3 +146,23 @@ dist
 # Personal
 .vscode/
 personal_docs/
+
+# LaTeX build artifacts (keep only .tex and .pdf)
+*.aux
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.out
+*.toc
+*.nav
+*.snm
+*.vrb
+*.bbl
+*.blg
+*.bcf
+*.run.xml
+*.idx
+*.ilg
+*.ind
+*.lof
+*.lot

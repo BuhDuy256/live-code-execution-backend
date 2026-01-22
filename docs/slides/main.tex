@@ -1,0 +1,81 @@
+% Live Code Execution Backend - Case Study Presentation
+% Author: Senior Backend Engineer
+% Target: SWE Intern Position at Edtronaut
+
+\documentclass[aspectratio=169]{beamer}
+
+% Theme and color scheme
+\usetheme{Madrid}
+\usecolortheme{seahorse}
+
+% Packages
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric,arrows.meta,positioning}
+\usepackage{fontawesome5}
+
+% Define JavaScript language for listings
+\lstdefinelanguage{JavaScript}{
+  keywords={const, let, var, function, return, if, else, for, while, break, continue, spawn, kill},
+  keywordstyle=\color{blue}\bfseries,
+  ndkeywords={true, false, null, undefined},
+  ndkeywordstyle=\color{purple}\bfseries,
+  identifierstyle=\color{black},
+  sensitive=false,
+  comment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  commentstyle=\color{green!60!black}\ttfamily,
+  stringstyle=\color{red}\ttfamily,
+  morestring=[b]',
+  morestring=[b]"
+}
+
+% Listing configuration for code snippets
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    backgroundcolor=\color{gray!10},
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!60!black},
+    stringstyle=\color{red},
+    showstringspaces=false
+}
+
+% Title information
+\title[Live Code Execution]{Live Code Execution Backend}
+\subtitle{A Scalable Architecture for Remote Code Execution}
+\author{Nguyen Bao Duy}
+\institute{Edtronaut - SWE Intern Case Study}
+\date{\today}
+
+% Custom colors
+\definecolor{successgreen}{RGB}{46, 125, 50}
+\definecolor{warningred}{RGB}{198, 40, 40}
+\definecolor{infoblue}{RGB}{2, 119, 189}
+
+% Section divider slides
+\AtBeginSection[]
+{
+  \begin{frame}
+    \frametitle{Outline}
+    \tableofcontents[currentsection]
+  \end{frame}
+}
+
+\begin{document}
+
+% Title slide
+\frame{\titlepage}
+
+% Include all sections
+\input{sections/01_introduction.tex}
+\input{sections/02_architecture.tex}
+\input{sections/03_technical_design.tex}
+\input{sections/04_tradeoffs.tex}
+\input{sections/05_reliability.tex}
+\input{sections/06_conclusion.tex}
+
+\end{document}
