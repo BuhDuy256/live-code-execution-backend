@@ -436,6 +436,51 @@ You can add more languages by editing the `LANGUAGE_CONFIG` in [src/config/const
 }
 ```
 
-## Design decisions and trade-offs
+## Design Decisions and Trade-offs
 
-## What you would improve with more time
+### Async Execution with Queue
+
+**Problem:** Running user code takes time. If the API waits for code to finish, it becomes slow and blocks other requests.
+
+**Decision:** Use Redis + BullMQ for background processing. The API adds jobs to the queue and returns immediately. A separate Worker process picks up jobs and runs the code.
+
+**Trade-off:** This adds complexity. The system now has three parts: API, Redis, and Worker. Clients must poll for results because the API does not wait.
+
+---
+
+### Code Isolation
+
+**Problem:** User code is untrusted. It can contain infinite loops, produce large output, or crash the server.
+
+**Decision:** Run code in a child process with a 5-second timeout and 1MB output limit. If the process exceeds these limits, it is killed immediately.
+
+**Trade-off:** Child process is less secure than Docker containers. It relies on OS-level limits, not full sandboxing.
+
+---
+
+### Database Choice
+
+**Problem:** Need to store session and execution state quickly.
+
+**Decision:** Use SQLite for simplicity. It requires zero setup and works well for a take-home assignment.
+
+**Trade-off:** SQLite does not support concurrent writes. It is not suitable for multiple API instances in production.
+
+---
+
+## What I Would Improve with More Time
+
+### Security: Docker Containers
+
+The current system uses child processes for isolation. With more time, I would use Docker or gVisor to run user code in a fully sandboxed container. This provides stronger isolation and prevents malicious code from accessing the host system.
+
+### Scaling: PostgreSQL
+
+SQLite is a single-file database. It cannot handle concurrent writes from multiple API servers. I would migrate to PostgreSQL with connection pooling to support horizontal scaling.
+
+### Observability: Logging and Metrics
+
+The current system only has console logs. I would add:
+
+- **Metrics** using Prometheus to track queue length, execution time, and error rates
+- **BullMQ Dashboard** (Bull Board) for queue visibility
