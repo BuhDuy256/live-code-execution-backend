@@ -50,7 +50,7 @@ DB_PATH=./data/database.db
 
 You have several options to run Redis:
 
-**Option A: Redis on Docker (Recommended for Windows/macOS)**
+**Option A: Redis on Docker (Recommended)**
 
 ```bash
 docker run -d --name redis-local -p 6379:6379 redis:7-alpine
@@ -70,32 +70,7 @@ docker stop redis-local
 docker rm redis-local
 ```
 
-**Option B: Native Redis Installation**
-
-_macOS (using Homebrew):_
-
-```bash
-brew services start redis
-```
-
-_Linux:_
-
-```bash
-sudo systemctl start redis
-```
-
-_Windows:_
-
-```bash
-# Use WSL2 with Redis installed, or use Docker (Option A above)
-```
-
-Verify Redis is running (for native installation):
-
-```bash
-redis-cli ping
-# Should return: PONG
-```
+**Option B: Native Redis**
 
 #### 5. Initialize the Database
 
