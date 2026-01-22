@@ -47,28 +47,49 @@ REDIS_PORT=6379
 
 #### 4. Start Redis Server
 
-Make sure Redis is running on your local machine:
+You have several options to run Redis:
 
-**macOS (using Homebrew):**
+**Option A: Redis on Docker (Recommended for Windows/macOS)**
+
+```bash
+docker run -d --name redis-local -p 6379:6379 redis:7-alpine
+```
+
+Verify Redis is running:
+
+```bash
+docker exec redis-local redis-cli ping
+# Should return: PONG
+```
+
+To stop Redis:
+
+```bash
+docker stop redis-local
+docker rm redis-local
+```
+
+**Option B: Native Redis Installation**
+
+_macOS (using Homebrew):_
 
 ```bash
 brew services start redis
 ```
 
-**Linux:**
+_Linux:_
 
 ```bash
 sudo systemctl start redis
 ```
 
-**Windows:**
+_Windows:_
 
 ```bash
-# Download and run Redis from https://redis.io/download
-# Or use WSL2 with Redis installed
+# Use WSL2 with Redis installed, or use Docker (Option A above)
 ```
 
-Verify Redis is running:
+Verify Redis is running (for native installation):
 
 ```bash
 redis-cli ping
@@ -99,10 +120,17 @@ The API server will start on `http://localhost:3000`
 
 #### 7. Start the Worker Process (In a Separate Terminal)
 
+**For Development (with auto-reload):**
+
 ```bash
-npm run dev
-# Then manually run the worker:
 npx ts-node-dev src/workers/index.ts
+```
+
+**For Production (after build):**
+
+```bash
+npm run build
+node dist/workers/index.js
 ```
 
 ### Option 2: Docker Compose (Recommended for Production-like Environment)
@@ -188,8 +216,14 @@ docker-compose down -v
 - `npm start` - Start production server
 - `npm run db:init` - Initialize database
 - `npm run db:reset` - Reset database (drops all data)
-- `npm run test:spam` - Run spam protection tests
-- `npm run test:race` - Run race condition tests
+- `npm run test:race` - Run race condition tests (local)
+- `npm run test:spam` - Run spam protection tests (local)
+- `npm run test:limits` - Run resource limits tests (local)
+- `npm run test:all` - Run all integration tests (local)
+- `npm run test:race:docker` - Run race condition tests (Docker)
+- `npm run test:spam:docker` - Run spam protection tests (Docker)
+- `npm run test:limits:docker` - Run resource limits tests (Docker)
+- `npm run test:all:docker` - Run all integration tests (Docker)
 - `npm run lint` - Run ESLint
 - `npm run lint:fix` - Fix ESLint issues
 

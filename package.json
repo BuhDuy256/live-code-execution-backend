@@ -19,6 +19,7 @@
     "test:limits": "ts-node tests/integration/resource-limits.test.ts",
     "test:limits:docker": "cross-env API_URL=http://localhost:3000 ts-node tests/integration/resource-limits.test.ts",
     "test:all": "npm run test:race && npm run test:spam && npm run test:limits",
+    "test:all:docker": "npm run test:race:docker && npm run test:spam:docker && npm run test:limits:docker",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix"
   },

@@ -1,17 +1,162 @@
-import { spawn } from "child_process";
+import { spawn, ChildProcess } from "child_process";
 import fs from "fs/promises";
 import path from "path";
 import os from "os";
 import type { ExecutionResult, SandboxOptions } from "../types/execution";
-import { validateLanguage } from "../utils/language.util";
-import { LANGUAGE_CONFIG, MAX_OUTPUT_SIZE } from "../config/constants";
+import { validateLanguage, getLanguageConfig } from "../utils/language.util";
+import { MAX_OUTPUT_SIZE } from "../config/constants";
 
-const getLanguageConfig = (language: string) => {
-  const config = LANGUAGE_CONFIG[language as keyof typeof LANGUAGE_CONFIG];
-  if (!config) {
-    throw new Error(`Unsupported language: ${language}`);
+type TimeoutReason = "TIMEOUT" | "OUTPUT_LIMIT";
+
+interface ExecutionState {
+  stdout: string;
+  stderr: string;
+  killed: boolean;
+  timeoutReason: TimeoutReason | null;
+}
+
+/**
+ * Helper: Create temporary directory for code execution
+ */
+const createTempDirectory = async (): Promise<string> => {
+  return await fs.mkdtemp(path.join(os.tmpdir(), "exec-"));
+};
+
+/**
+ * Helper: Cleanup temporary directory
+ */
+const cleanupTempDirectory = async (tmpDir: string | null): Promise<void> => {
+  if (tmpDir) {
+    await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {
+      console.error(`Failed to cleanup tmpDir: ${tmpDir}`);
+    });
   }
-  return config;
+};
+
+/**
+ * Helper: Prepare command arguments based on language
+ */
+const prepareCommandArgs = async (
+  language: string,
+  sourceCode: string,
+  tmpDir: string,
+  memoryLimit: number
+): Promise<string[]> => {
+  const langConfig = getLanguageConfig(language);
+
+  // Python: inject memory limit wrapper and use -c to execute inline
+  if (language === 'python' && 'memoryLimitWrapper' in langConfig) {
+    const wrapper = (langConfig as any).memoryLimitWrapper(memoryLimit, sourceCode);
+    return [...langConfig.args, wrapper];
+  }
+
+  // JavaScript/Java: write to file and use memory flags
+  const filePath = path.join(tmpDir, langConfig.fileName);
+  await fs.writeFile(filePath, sourceCode);
+  const memoryArgs = langConfig.memoryArgs(memoryLimit);
+  return [...memoryArgs, ...langConfig.args, filePath];
+};
+
+/**
+ * Helper: Setup timeout handler
+ */
+const setupTimeout = (
+  child: ChildProcess,
+  state: ExecutionState,
+  timeoutMs: number
+): NodeJS.Timeout => {
+  return setTimeout(() => {
+    state.killed = true;
+    state.timeoutReason = "TIMEOUT";
+    child.kill('SIGKILL');
+  }, timeoutMs);
+};
+
+/**
+ * Helper: Handle output data (stdout or stderr)
+ */
+const handleOutputData = (
+  child: ChildProcess,
+  state: ExecutionState,
+  data: Buffer,
+  isStderr: boolean
+): void => {
+  const output = data.toString();
+
+  if (isStderr) {
+    state.stderr += output;
+    if (state.stderr.length > MAX_OUTPUT_SIZE) {
+      state.killed = true;
+      state.timeoutReason = "OUTPUT_LIMIT";
+      child.kill('SIGKILL');
+    }
+  } else {
+    state.stdout += output;
+    if (state.stdout.length > MAX_OUTPUT_SIZE) {
+      state.killed = true;
+      state.timeoutReason = "OUTPUT_LIMIT";
+      child.kill('SIGKILL');
+    }
+  }
+};
+
+/**
+ * Helper: Build final execution result
+ */
+const buildExecutionResult = (state: ExecutionState, exitCode: number | null): ExecutionResult => {
+  let { stdout, stderr } = state;
+
+  // Set stderr message based on kill reason
+  if (state.killed && state.timeoutReason === "TIMEOUT") {
+    stderr = "Execution timed out";
+  } else if (state.killed && state.timeoutReason === "OUTPUT_LIMIT") {
+    stderr = stderr || "Output size limit exceeded";
+  }
+
+  return {
+    stdout: stdout.substring(0, MAX_OUTPUT_SIZE),
+    stderr: stderr.substring(0, MAX_OUTPUT_SIZE),
+    exitCode: state.killed ? -1 : (exitCode ?? -1),
+  };
+};
+
+/**
+ * Helper: Execute code in spawned process
+ */
+const executeProcess = async (
+  command: string,
+  args: string[],
+  timeout: number
+): Promise<ExecutionResult> => {
+  return new Promise((resolve) => {
+    const child = spawn(command, args, { shell: false });
+    const state: ExecutionState = {
+      stdout: "",
+      stderr: "",
+      killed: false,
+      timeoutReason: null,
+    };
+
+    const timer = setupTimeout(child, state, timeout);
+
+    child.stdout.on("data", (data) => handleOutputData(child, state, data, false));
+    child.stderr.on("data", (data) => handleOutputData(child, state, data, true));
+
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      resolve(buildExecutionResult(state, code));
+    });
+
+    child.on("error", () => {
+      clearTimeout(timer);
+      // Always resolve, never reject - sanitize error message
+      resolve({
+        stdout: "",
+        stderr: "Unable to execute code",
+        exitCode: -1,
+      });
+    });
+  });
 };
 
 export const runCodeInSandbox = async (
@@ -19,96 +164,24 @@ export const runCodeInSandbox = async (
   language: string,
   options: SandboxOptions
 ): Promise<ExecutionResult> => {
+  // Step 1: Validate language
   validateLanguage(language);
 
   let tmpDir: string | null = null;
 
   try {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "exec-"));
-    const langConfig = getLanguageConfig(language);
+    // Step 2: Create temporary directory
+    tmpDir = await createTempDirectory();
+
+    // Step 3: Prepare command arguments
     const memoryLimit = options.memoryLimit || 128;
+    const commandArgs = await prepareCommandArgs(language, sourceCode, tmpDir, memoryLimit);
+    const langConfig = getLanguageConfig(language);
 
-    // Handle Python's memory limit wrapper (uses -c flag with inline code)
-    let commandArgs: string[];
-
-    if (language === 'python' && 'memoryLimitWrapper' in langConfig) {
-      // Python: inject memory limit wrapper and use -c to execute inline
-      const wrapper = (langConfig as any).memoryLimitWrapper(memoryLimit, sourceCode);
-      commandArgs = [...langConfig.args, wrapper];
-    } else {
-      // JavaScript/Java: write to file and use memory flags
-      const filePath = path.join(tmpDir, langConfig.fileName);
-      await fs.writeFile(filePath, sourceCode);
-      const memoryArgs = langConfig.memoryArgs(memoryLimit);
-      commandArgs = [...memoryArgs, ...langConfig.args, filePath];
-    }
-
-    return await new Promise((resolve) => {
-      const child = spawn(langConfig.command, commandArgs);
-
-      let stdout = "";
-      let stderr = "";
-      let killed = false;
-      let timeoutReason: string | null = null;
-
-      // Manual timeout - spawn's timeout option doesn't work reliably
-      const timer = setTimeout(() => {
-        killed = true;
-        timeoutReason = "TIMEOUT";
-        child.kill('SIGKILL');
-      }, options.timeout);
-
-      child.stdout.on("data", (data) => {
-        stdout += data.toString();
-        if (stdout.length > MAX_OUTPUT_SIZE) {
-          killed = true;
-          timeoutReason = "OUTPUT_LIMIT";
-          child.kill('SIGKILL');
-        }
-      });
-
-      child.stderr.on("data", (data) => {
-        stderr += data.toString();
-        if (stderr.length > MAX_OUTPUT_SIZE) {
-          killed = true;
-          timeoutReason = "OUTPUT_LIMIT";
-          child.kill('SIGKILL');
-        }
-      });
-
-      child.on("close", (code) => {
-        clearTimeout(timer);
-
-        // Set stderr message based on kill reason
-        if (killed && timeoutReason === "TIMEOUT") {
-          stderr = "Execution timed out";
-        } else if (killed && timeoutReason === "OUTPUT_LIMIT") {
-          stderr = stderr || "Output size limit exceeded";
-        }
-
-        resolve({
-          stdout: stdout.substring(0, MAX_OUTPUT_SIZE),
-          stderr: stderr.substring(0, MAX_OUTPUT_SIZE),
-          exitCode: killed ? -1 : (code ?? -1),
-        });
-      });
-
-      child.on("error", (_err) => {
-        clearTimeout(timer);
-        // Always resolve, never reject in execution system
-        // Sanitize error - don't expose command or path details
-        resolve({
-          stdout: "",
-          stderr: "Unable to execute code",
-          exitCode: -1,
-        });
-      });
-    });
+    // Step 4: Execute in sandboxed process
+    return await executeProcess(langConfig.command, commandArgs, options.timeout);
   } finally {
-    if (tmpDir) {
-      await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {
-        console.error(`Failed to cleanup tmpDir: ${tmpDir}`);
-      });
-    }
+    // Step 5: Cleanup temporary directory
+    await cleanupTempDirectory(tmpDir);
   }
 };

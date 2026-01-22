@@ -34,17 +34,17 @@ console.log('Hello, World!');
 
   python: {
     fileName: "main.py",
-    command: "python3",
+    command: "python",
     args: ["-c"] as string[],  // Use -c flag to run inline code with wrapper
     memoryArgs: (_memoryMB: number) => [], // Handled via wrapper injection
     memoryLimitWrapper: (memoryMB: number, userCode: string) => {
       // Inject resource limit at runtime (Linux/Unix only)
-      return `import resource, sys
-try:
+      return `try:
+    import resource
     # Set memory limit (RLIMIT_AS = Address Space)
     limit_bytes = ${memoryMB} * 1024 * 1024
     resource.setrlimit(resource.RLIMIT_AS, (limit_bytes, limit_bytes))
-except (ValueError, OSError):
+except (ImportError, ValueError, OSError):
     # Windows or insufficient permissions - skip limit
     pass
 

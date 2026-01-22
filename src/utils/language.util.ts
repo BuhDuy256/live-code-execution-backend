@@ -1,4 +1,4 @@
-import { SUPPORTED_LANGUAGES, SupportedLanguage } from '../config/constants';
+import { LANGUAGE_CONFIG, SUPPORTED_LANGUAGES, SupportedLanguage } from '../config/constants';
 
 export function isSupportedLanguage(language: string): language is SupportedLanguage {
   return (SUPPORTED_LANGUAGES as readonly string[]).includes(language);
@@ -11,3 +11,11 @@ export function validateLanguage(language: string): asserts language is Supporte
     );
   }
 }
+
+export const getLanguageConfig = (language: string) => {
+  const config = LANGUAGE_CONFIG[language as keyof typeof LANGUAGE_CONFIG];
+  if (!config) {
+    throw new Error(`Unsupported language: ${language}`);
+  }
+  return config;
+};

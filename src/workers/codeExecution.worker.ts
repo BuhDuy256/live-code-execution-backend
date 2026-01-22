@@ -7,71 +7,138 @@ import * as ExecutionRepository from "../repositories/execution.repository";
 import * as CodeRunnerService from "../services/codeRunner.service";
 import { ExecutionStatus } from "../models";
 
+/**
+ * Helper: Validate job has an ID
+ */
+const validateJobId = (job: Job<CodeExecutionJobData>): string => {
+  if (!job.id) {
+    throw new Error("Job ID is missing");
+  }
+  return String(job.id);
+};
+
+/**
+ * Helper: Mark execution as RUNNING
+ */
+const markExecutionAsRunning = async (executionId: string): Promise<void> => {
+  await ExecutionRepository.updateExecutionStatus(executionId, ExecutionStatus.RUNNING);
+};
+
+/**
+ * Helper: Execute code in sandbox and measure time
+ */
+const executeCodeInSandbox = async (sourceCode: string, language: string): Promise<{ result: ExecutionResult; executionTimeMs: number }> => {
+  const startTime = Date.now();
+
+  const result = await CodeRunnerService.runCodeInSandbox(sourceCode, language, {
+    timeout: EXECUTION_LIMITS.TIMEOUT_MS,
+    memoryLimit: EXECUTION_LIMITS.MEMORY_MB,
+  });
+
+  const executionTimeMs = Date.now() - startTime;
+
+  return { result, executionTimeMs };
+};
+
+/**
+ * Helper: Check if execution result indicates user code error
+ */
+const hasUserCodeError = (result: ExecutionResult): boolean => {
+  return !!(result.stderr || (result.exitCode !== undefined && result.exitCode !== 0));
+};
+
+/**
+ * Helper: Handle successful execution (no errors)
+ */
+const handleSuccessResult = async (executionId: string, result: ExecutionResult, executionTimeMs: number): Promise<void> => {
+  await ExecutionRepository.updateExecutionStatus(executionId, ExecutionStatus.COMPLETED, {
+    stdout: result.stdout,
+    stderr: null,
+    exit_code: 0,
+    execution_time_ms: executionTimeMs,
+  });
+
+  console.log(`Execution ${executionId} completed successfully in ${executionTimeMs}ms`);
+};
+
+/**
+ * Helper: Handle user code error (non-zero exit code or stderr)
+ */
+const handleUserCodeError = async (executionId: string, result: ExecutionResult, executionTimeMs: number): Promise<void> => {
+  await ExecutionRepository.updateExecutionStatus(executionId, ExecutionStatus.FAILED, {
+    stdout: result.stdout,
+    stderr: result.stderr || "",
+    exit_code: result.exitCode ?? 1,
+    execution_time_ms: executionTimeMs,
+  });
+
+  console.log(`Execution ${executionId} failed: user code error (exit code: ${result.exitCode})`);
+};
+
+/**
+ * Helper: Determine status from system error (timeout vs other errors)
+ */
+const determineErrorStatus = (error: any): ExecutionStatus => {
+  return error?.name === "TimeoutError" ? ExecutionStatus.TIMEOUT : ExecutionStatus.FAILED;
+};
+
+/**
+ * Helper: Get safe error message (never expose internal details)
+ */
+const getSafeErrorMessage = (status: ExecutionStatus): string => {
+  return status === ExecutionStatus.TIMEOUT
+    ? "Execution timed out"
+    : "System error occurred during execution";
+};
+
+/**
+ * Helper: Handle system errors (timeout, crashes, etc.)
+ */
+const handleSystemError = async (executionId: string, error: any): Promise<void> => {
+  const status = determineErrorStatus(error);
+  const safeErrorMessage = getSafeErrorMessage(status);
+
+  await ExecutionRepository.updateExecutionStatus(executionId, status, {
+    error_message: safeErrorMessage,
+    stderr: null,
+  });
+
+  console.error(`Execution ${executionId} system error (${status}):`, error?.message);
+};
+
+/**
+ * Main worker job processor
+ */
+const processCodeExecution = async (job: Job<CodeExecutionJobData>): Promise<ExecutionResult> => {
+  // Step 1: Validate job and extract data
+  const executionId = validateJobId(job);
+  const { sourceCode, language } = job.data;
+
+  try {
+    // Step 2: Mark as running
+    await markExecutionAsRunning(executionId);
+
+    // Step 3: Execute code in sandbox
+    const { result, executionTimeMs } = await executeCodeInSandbox(sourceCode, language);
+
+    // Step 4: Process result based on success or user code error
+    if (hasUserCodeError(result)) {
+      await handleUserCodeError(executionId, result, executionTimeMs);
+    } else {
+      await handleSuccessResult(executionId, result, executionTimeMs);
+    }
+
+    return result;
+  } catch (error: any) {
+    // Step 5: Handle system errors
+    await handleSystemError(executionId, error);
+    throw error;
+  }
+};
+
 export const codeExecutionWorker = new Worker<CodeExecutionJobData>(
   "code-execution",
-  async (job: Job<CodeExecutionJobData>): Promise<ExecutionResult> => {
-    if (!job.id) {
-      throw new Error("Job ID is missing");
-    }
-
-    const executionId = String(job.id);
-    const { sourceCode, language } = job.data;
-
-    try {
-      await ExecutionRepository.updateExecutionStatus(executionId, ExecutionStatus.RUNNING);
-      await job.updateProgress({ status: "RUNNING", progress: 10 });
-
-      const startTime = Date.now();
-
-      const result: ExecutionResult = await CodeRunnerService.runCodeInSandbox(sourceCode, language, {
-        timeout: EXECUTION_LIMITS.TIMEOUT_MS,
-        memoryLimit: EXECUTION_LIMITS.MEMORY_MB,
-      });
-
-      const executionTimeMs = Date.now() - startTime;
-
-      const hasUserCodeError = result.stderr || (result.exitCode !== undefined && result.exitCode !== 0);
-
-      if (hasUserCodeError) {
-        await ExecutionRepository.updateExecutionStatus(executionId, ExecutionStatus.FAILED, {
-          stdout: result.stdout,
-          stderr: result.stderr || "",
-          exit_code: result.exitCode ?? 1,
-          execution_time_ms: executionTimeMs,
-        });
-
-        console.log(`Execution ${executionId} failed: user code error (exit code: ${result.exitCode})`);
-      } else {
-        await ExecutionRepository.updateExecutionStatus(executionId, ExecutionStatus.COMPLETED, {
-          stdout: result.stdout,
-          stderr: null,
-          exit_code: 0,
-          execution_time_ms: executionTimeMs,
-        });
-
-        console.log(`Execution ${executionId} completed successfully in ${executionTimeMs}ms`);
-      }
-
-      return result;
-    } catch (error: any) {
-      const isTimeout = error?.name === "TimeoutError";
-      const status = isTimeout ? ExecutionStatus.TIMEOUT : ExecutionStatus.FAILED;
-
-      // Sanitize error message - never expose internal system details
-      const safeErrorMessage = isTimeout
-        ? "Execution timed out"
-        : "System error occurred during execution";
-
-      await ExecutionRepository.updateExecutionStatus(executionId, status, {
-        error_message: safeErrorMessage,
-        stderr: null,
-      });
-
-      console.error(`Execution ${executionId} system error (${status}):`, error?.message);
-
-      throw error;
-    }
-  },
+  processCodeExecution,
   {
     connection: redisOptions,
     concurrency: WORKER_CONFIG.CONCURRENCY,
