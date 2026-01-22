@@ -202,17 +202,129 @@ Jobs can fail for many reasons: code errors, timeouts, or system crashes. The sy
 
 ---
 
+### Output Size Handling
+
+**Problem**  
+User code may produce excessive output (e.g., infinite loops printing to console). Without limits, this could exhaust memory and crash the worker.
+
+**How it works**
+
+1. **Real-time monitoring** — As the process runs, stdout and stderr are accumulated. If either exceeds 1MB (`MAX_OUTPUT_SIZE`), the process is killed immediately.
+2. **Error message** — When killed for output overflow, stderr is set to "Output size limit exceeded".
+3. **Final truncation** — Before returning results, output is truncated to 1MB as a safety net.
+
+**Guarantees**
+
+- The worker will not crash due to excessive output.
+- Users receive a clear error message when output is too large.
+
+---
+
 ## 3. Scalability Considerations
 
-- Handling many concurrent live coding sessions
-- Horizontal scaling of workers
-- Queue backlog handling
-- Potential bottlenecks and mitigation strategies
+### Handling Many Concurrent Sessions
+
+**Problem**  
+Many users may code simultaneously. Each session generates autosave requests and execution requests. The system must handle this load without degrading performance.
+
+**How it works**
+
+- **Autosave throttling** — Each session is throttled to 1 DB write per second (`THROTTLE_MS: 1000`). Rapid keystrokes are coalesced, reducing database load.
+- **Rate limiting per session** — Each session is limited to 5 executions per minute with a 2-second cooldown between runs. This prevents any single user from overwhelming the queue.
+- **Stateless API** — The API server does not store session or execution state in memory. All state is stored in shared storage (SQLite for data, Redis for rate limits and queues). This means any API instance can handle any request, so you can run multiple API servers behind a load balancer to handle more traffic.
+
+---
+
+### Horizontal Scaling of Workers
+
+**Problem**  
+A single worker may not be able to process jobs fast enough during peak load. The system needs to scale workers independently.
+
+**How it works**
+
+- **Queue-based decoupling** — Workers pull jobs from Redis. Adding more worker instances increases throughput without code changes.
+- **Concurrency limit** — Each worker runs up to 5 jobs in parallel (`CONCURRENCY: 5`). If 5 jobs are running, new jobs wait until one finishes.
+- **Rate limit** — Each worker can start at most 10 new jobs per second (`RATE_LIMIT_MAX: 10`). This prevents burst traffic from overwhelming the worker even if slots are available.
+- **Independent processes** — Workers are separate processes from the API. They can be deployed, scaled, and restarted independently.
+
+**Scaling example**
+
+| Workers | Concurrency | Max Throughput |
+| ------- | ----------- | -------------- |
+| 1       | 5           | ~10 jobs/sec   |
+| 3       | 5           | ~30 jobs/sec   |
+| 10      | 5           | ~100 jobs/sec  |
+
+---
+
+### Queue Backlog Handling
+
+**Problem**  
+If jobs arrive faster than workers can process them, the queue grows. The system needs strategies to handle backlogs gracefully.
+
+**How it works**
+
+- **Automatic cleanup** — Completed jobs are removed after 1 hour or when count exceeds 1000. Failed jobs are kept up to 1000 for debugging.
+- **Staleness detection** — BullMQ's built-in stalled job detection checks every 30 seconds. If a worker crashes mid-execution, BullMQ retries the job automatically. After all retries are exhausted, the `failed` event handler marks the execution as `FAILED` in the database.
+- **Backoff on retry** — Failed jobs use exponential backoff (`1s, 2s, 4s...`) to avoid retry storms.
+
+**Current limits**
+
+- No queue size limit is enforced. Under extreme load, Redis memory could grow unbounded.
+- No priority queue. All jobs are processed in FIFO order.
+
+---
+
+### Potential Bottlenecks and Mitigations
+
+| Bottleneck                  | Current Mitigation             | Future Improvement                          |
+| --------------------------- | ------------------------------ | ------------------------------------------- |
+| **SQLite write contention** | Single DB, autosave throttling | Migrate to PostgreSQL for concurrent writes |
+| **Redis memory**            | Job cleanup policies           | Add queue size limits, reject when full     |
+| **Worker CPU**              | Concurrency + rate limiting    | Horizontal scaling, Kubernetes HPA          |
+| **Code execution timeout**  | 5-second timeout per job       | Configurable per language                   |
+| **Large output handling**   | 1MB output limit               | Stream output, truncate earlier             |
 
 ---
 
 ## 4. Trade-offs
 
-- Technology choices and why
-- What you optimized for (speed vs reliability vs simplicity)
-- Production readiness gaps
+### Technology Choices
+
+| Technology         | Why Chosen                                                                          | Trade-off                                                                |
+| ------------------ | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| **SQLite**         | Zero setup, file-based, perfect for development and small deployments               | Not suitable for multiple API instances writing concurrently             |
+| **Redis + BullMQ** | Battle-tested job queue with retries, stalled detection, and rate limiting built-in | Adds operational complexity (Redis must be running and monitored)        |
+| **Child Process**  | Simple isolation without containerization overhead                                  | Less secure than Docker/gVisor; relies on OS-level timeout/memory limits |
+| **TypeScript**     | Type safety, better IDE support, easier refactoring                                 | Build step required; slightly larger codebase                            |
+
+---
+
+### What Was Optimized For
+
+| Priority           | Description                                                                                                                               |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| **1. Simplicity**  | Single SQLite database, in-memory rate limiting with Redis, no complex orchestration                                                      |
+| **2. Reliability** | BullMQ handles retries, stalled jobs, and graceful shutdown automatically                                                                 |
+| **3. Speed**       | Async queue returns immediately; no blocking on code execution                                                                            |
+| **4. Safety**      | Output limits, timeout limits, memory limits, rate limiting, and spam protection prevent abuse and protect the worker from malicious code |
+
+**Not optimized for:**
+
+- High availability (single SQLite database is a single point of failure)
+- Horizontal API scaling (SQLite doesn't support concurrent writes well)
+- Sub-second execution latency (queue adds slight delay)
+
+---
+
+### Production Readiness Gaps
+
+| Gap                     | Current State              | To Be Production-Ready                                 |
+| ----------------------- | -------------------------- | ------------------------------------------------------ |
+| **Database**            | SQLite (single-writer)     | Migrate to PostgreSQL with connection pooling          |
+| **Container isolation** | Child process with timeout | Use Docker or gVisor for stronger sandboxing           |
+| **Monitoring**          | Console logs only          | Add structured logging, metrics (Prometheus), alerting |
+| **Authentication**      | None                       | Add API keys or OAuth for session ownership            |
+| **HTTPS**               | Not configured             | Add TLS termination via reverse proxy                  |
+| **Rate limiting**       | Per-session only           | Add IP-based rate limiting to prevent abuse            |
+| **Queue monitoring**    | None                       | Add BullMQ dashboard (Bull Board) for visibility       |
