@@ -30,19 +30,20 @@ npm install
 
 #### 3. Set Up Environment Variables
 
-Create a `.env` file in the root directory:
+Create a `.env` file for local development:
 
 ```bash
-cp .env.example .env
+cp .env.local.example .env
 ```
 
-Edit the `.env` file with your local configuration:
+The default configuration should work for local development:
 
 ```env
 NODE_ENV=development
 PORT=3000
-REDIS_HOST=localhost
+REDIS_HOST=localhost  # Redis on localhost
 REDIS_PORT=6379
+DB_PATH=./data/database.db
 ```
 
 #### 4. Start Redis Server
@@ -147,17 +148,23 @@ cd live-code-execution-backend
 Create a `.env` file for Docker:
 
 ```bash
-cp .env.example .env
+cp .env.docker.example .env
 ```
 
-Edit the `.env` file:
+The default configuration uses Docker service names:
 
 ```env
 NODE_ENV=production
 PORT=3000
-REDIS_HOST=redis
+REDIS_HOST=redis  # Docker service name
 REDIS_PORT=6379
+DB_PATH=./data/database.db
 ```
+
+> **Note:** When switching between local and Docker, use the appropriate `.env` file:
+>
+> - Local: `cp .env.local.example .env`
+> - Docker: `cp .env.docker.example .env`
 
 #### 3. Build and Start All Services
 
