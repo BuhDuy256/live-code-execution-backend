@@ -122,9 +122,9 @@ The database remains the authoritative store for execution state. If QueueEvents
 
 **Trade-offs**
 
-- If the Worker crashes mid-execution, the state may stay as `RUNNING`. The system needs extra logic to detect stale jobs.
 - Polling is required. Clients must keep asking for updates because the API does not push changes.
 - Only one database is used. This keeps things simple but limits horizontal scaling.
+- Stalled job detection adds a delay (30 seconds by default) before retrying crashed jobs.
 
 ---
 
@@ -138,18 +138,16 @@ Distributed systems can fail at any point. If the Worker crashes while running c
 **How it works**  
 The Worker updates the database when it starts a job (`RUNNING`) and when it finishes (`COMPLETED`, `FAILED`, or `TIMEOUT`). If the Worker crashes mid-execution:
 
-1. BullMQ detects the stalled job and automatically retries it.
-2. If all retries are exhausted, the `failed` event handler updates the database to `FAILED`.
+1. BullMQ's built-in stalled job detection automatically identifies jobs that are stuck (via `lockDuration`, `stalledInterval`, and `maxStalledCount` configuration).
+2. BullMQ automatically retries stalled jobs.
+3. If all retries are exhausted, the `failed` event handler updates the database to `FAILED`.
 
 **Guarantees**
 
 - The database always reflects the last known state.
-- Crashed jobs are automatically retried by BullMQ.
+- Crashed jobs are automatically detected and retried by BullMQ.
 - Jobs that exhaust all retries are marked as `FAILED` in the database.
-
-**Out of scope**
-
-- A separate cleanup process for edge cases (e.g., database write failures during the `failed` event) is not implemented.
+- No jobs remain stuck at `RUNNING` status indefinitely.
 
 ---
 
@@ -177,6 +175,47 @@ The API uses multiple layers of protection:
 
 - The Worker does not check the database before running. If BullMQ retries a job, the code may run again.
 - True exactly-once execution is not guaranteed. If the Worker crashes after running code but before updating the database, the code may run again on retry.
+
+---
+
+### Autosave Spam Protection
+
+**Problem**  
+Users typing rapidly can generate hundreds of autosave requests per minute. Without throttling, each keystroke would trigger a database write, overwhelming SQLite and degrading performance for all users.
+
+**How it works**  
+The API uses an adaptive throttling mechanism with three strategies:
+
+1. **Write throttling** — Database writes are limited to once per second (`THROTTLE_MS: 1000`). If a write happened recently, the system delays the next write.
+2. **Request coalescing** — When multiple autosave requests arrive within the throttle window, only the latest code is saved. Previous pending autosaves are cancelled.
+3. **Forced write on timeout** — If autosaves have been pending for too long (`PENDING_TIMEOUT_MS`), the system forces a write to prevent data loss, even if requests keep arriving.
+
+**Implementation details**
+
+- Each session tracks its last write time and any pending autosave in memory.
+- When an autosave request arrives:
+  - If ≥1 second since last write → write immediately
+  - If <1 second and no pending timeout → cancel old pending, schedule new pending
+  - If pending has been delayed >5 seconds → force write immediately (prevents data loss)
+- No changes are written if the code is identical to the last saved version.
+
+**Why this approach**
+
+- Protects the database from write storms without blocking user input.
+- Ensures the latest code is always saved, even during rapid typing.
+- Prevents data loss if the frontend keeps sending requests continuously.
+- In-memory tracking avoids extra database queries for throttling checks.
+
+**Guarantees**
+
+- Maximum 1 database write per second per session.
+- No autosave request is delayed more than 5 seconds.
+- The most recent code is always saved, older versions are discarded.
+
+**Trade-offs**
+
+- Autosave state (pending writes) is stored in memory, not persisted. If the API crashes, pending autosaves are lost (but the last successfully saved version remains in the database).
+- Throttling state is per-API-instance. Multiple API instances do not share throttling state, which could allow slightly higher write rates if load-balanced incorrectly.
 
 ---
 
@@ -277,13 +316,14 @@ If jobs arrive faster than workers can process them, the queue grows. The system
 
 ### Potential Bottlenecks and Mitigations
 
-| Bottleneck                  | Current Mitigation             | Future Improvement                          |
-| --------------------------- | ------------------------------ | ------------------------------------------- |
-| **SQLite write contention** | Single DB, autosave throttling | Migrate to PostgreSQL for concurrent writes |
-| **Redis memory**            | Job cleanup policies           | Add queue size limits, reject when full     |
-| **Worker CPU**              | Concurrency + rate limiting    | Horizontal scaling, Kubernetes HPA          |
-| **Code execution timeout**  | 5-second timeout per job       | Configurable per language                   |
-| **Large output handling**   | 1MB output limit               | Stream output, truncate earlier             |
+| Bottleneck                 | Current Solution           | Future Improvements                                                                                    |
+| -------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------ |
+| **SQLite write conflicts** | One database, limit writes | Switch to PostgreSQL; use shared connections; add extra copies for reading data                        |
+| **Redis memory usage**     | Auto-delete old jobs       | Set max queue size (1000 jobs); use priority for retries; create separate queues for each language     |
+| **Worker CPU overload**    | Limit jobs per worker      | Add more workers with Kubernetes; make sure each session gets fair share of resources                  |
+| **Code runs too long**     | 5-second timeout for all   | Set different timeout for each language; use smart timeout based on how complex the code is            |
+| **Too much output**        | Stop at 1MB limit          | Send output in small parts; cut output earlier; compress large outputs                                 |
+| **Queue gets too long**    | Clean up finished jobs     | Stop accepting new jobs when busy; auto-delete old waiting jobs; tell frontend to slow down            |
 
 ---
 
@@ -313,7 +353,7 @@ If jobs arrive faster than workers can process them, the queue grows. The system
 
 - High availability (single SQLite database is a single point of failure)
 - Horizontal API scaling (SQLite doesn't support concurrent writes well)
-- Sub-second execution latency (queue adds slight delay)
+- Instant execution results (using a queue means there is always a small delay before code runs)
 
 ---
 

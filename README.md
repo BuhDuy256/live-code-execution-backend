@@ -458,19 +458,126 @@ You can add more languages by editing the `LANGUAGE_CONFIG` in [src/config/const
 
 ---
 
+### Autosave Spam Protection
+
+**Problem:** Users typing rapidly can generate hundreds of autosave requests per minute. Without throttling, each keystroke would trigger a database write, overwhelming SQLite and degrading performance.
+
+**Decision:** Use adaptive throttling with three strategies:
+
+- **Write throttling** — Maximum 1 database write per second per session
+- **Request coalescing** — Only the latest code is saved; previous pending autosaves are cancelled
+- **Forced write on timeout** — If autosaves have been pending for >5 seconds, force a write to prevent data loss
+
+**Trade-off:** Autosave state (pending writes) is stored in memory. If the API crashes, pending autosaves are lost, but the last successfully saved version remains in the database.
+
+---
+
+### Idempotency Handling
+
+**Problem:** Users may click "Run" multiple times quickly, or buggy clients may send duplicate requests. This could create duplicate executions.
+
+**Decision:** Use multiple layers of protection:
+
+1. **Active execution check** — Reject if session already has a `QUEUED` or `RUNNING` execution
+2. **Cooldown period** — Short cooldown after each execution
+3. **Rate limit** — Maximum 5 executions per minute per session
+4. **Database constraint** — SQLite rejects duplicate execution IDs as a fallback
+
+**Trade-off:** Not true exactly-once execution. If the Worker crashes after running code but before updating the database, BullMQ retries may cause the code to run again.
+
+---
+
 ## What I Would Improve with More Time
 
-### Security: Docker Containers
+### 1. Stronger Container Isolation
 
-The current system uses child processes for isolation. With more time, I would use Docker or gVisor to run user code in a fully sandboxed container. This provides stronger isolation and prevents malicious code from accessing the host system.
+**Current**: Child processes with timeout limits  
+**Improvement**: Use Docker or gVisor for fully sandboxed code execution
 
-### Scaling: PostgreSQL
+The current system runs user code in isolated child processes. While this provides basic isolation, it relies on OS-level timeout and memory limits. Docker or gVisor would provide stronger sandboxing and prevent malicious code from accessing the host system.
 
-SQLite is a single-file database. It cannot handle concurrent writes from multiple API servers. I would migrate to PostgreSQL with connection pooling to support horizontal scaling.
+---
 
-### Observability: Logging and Metrics
+### 2. Horizontal Scaling with PostgreSQL
 
-The current system only has console logs. I would add:
+**Current**: SQLite (single-writer database)  
+**Improvement**: Migrate to PostgreSQL with connection pooling
 
-- **Metrics** using Prometheus to track queue length, execution time, and error rates
-- **BullMQ Dashboard** (Bull Board) for queue visibility
+SQLite is a single-file database that cannot handle concurrent writes from multiple API servers. Migrating to PostgreSQL would enable:
+
+- Multiple API instances writing concurrently
+- Read replicas for better read performance
+- Connection pooling for efficient resource usage
+
+---
+
+### 3. Observability and Monitoring
+
+**Current**: Console logs only  
+**Improvement**: Add structured logging, metrics, and dashboards
+
+I would add:
+
+- **Structured logging** with log levels and request tracing
+- **Prometheus metrics** to track queue length, execution time, error rates, and throughput
+- **BullMQ Dashboard** (Bull Board) for real-time queue visibility
+- **Alerting** for critical issues (queue backlog, worker failures, high error rates)
+
+---
+
+### 4. Real-time Updates with WebSocket/SSE
+
+**Current**: Manual polling from frontend  
+**Improvement**: Use WebSocket or Server-Sent Events (SSE) for real-time execution updates
+
+Currently, the frontend must poll the `GET /executions/:execution_id` endpoint repeatedly to check if code execution is complete. This creates unnecessary network traffic and adds latency.
+
+I would implement:
+
+- **WebSocket** or **SSE** connection for pushing execution status updates to the frontend
+- Real-time notifications when execution status changes: `QUEUED` → `RUNNING` → `COMPLETED`/`FAILED`/`TIMEOUT`
+- Reduced server load by eliminating constant polling requests
+- Better user experience with instant feedback
+
+**Trade-off**: Adds complexity for connection management, reconnection logic, and scaling WebSocket connections across multiple API instances.
+
+---
+
+### 5. Advanced Queue Management
+
+**Current**: FIFO queue with automatic cleanup  
+**Improvement**: Add queue size limits, priority queues, and per-language queues
+
+I would implement:
+
+- **Max queue size** (e.g., 1000 jobs) to prevent Redis memory exhaustion
+- **Priority queue** for retries and premium users
+- **Separate queues** per programming language for better isolation
+- **Backpressure mechanism** to reject new jobs when the system is overloaded
+
+---
+
+### 6. Worker Scaling and Resource Management
+
+**Current**: Manual worker deployment  
+**Improvement**: Auto-scaling with Kubernetes and per-session resource fairness
+
+I would add:
+
+- **Kubernetes-based auto-scaling** to add/remove workers based on queue length
+- **Fair resource allocation** to ensure each session gets equal CPU/memory
+- **Language-specific timeout limits** (e.g., Python might need more time than JavaScript)
+- **Adaptive timeout** based on code complexity analysis
+
+---
+
+### 7. Dead Letter Queue (DLQ) for Failed Jobs
+
+**Current**: Failed jobs are stored in the database with no reprocessing  
+**Out of scope**: Automatic DLQ with alerting and reprocessing
+
+I would add:
+
+- Dedicated dead letter queue for jobs that exhaust all retries
+- Manual reprocessing interface for debugging failed executions
+- Automated alerts when DLQ size exceeds threshold
