@@ -1,0 +1,103 @@
+@startuml Live Code Execution Backend Architecture
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+!define DEVICONS https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/devicons
+!define FONTAWESOME https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/font-awesome-5
+!include DEVICONS/nodejs.puml
+!include DEVICONS/redis.puml
+!include FONTAWESOME/users.puml
+
+title Live Code Execution Backend - C4 Container Diagram
+
+Person(user, "Developer/Student", "User writing and executing code in the browser")
+
+System_Boundary(backend, "Live Code Execution Backend") {
+    
+    Container(api, "API Container", "Node.js, Express, Docker", "REST API with rate limiting, autosave protection, and session management. Runs as separate container.", $sprite="nodejs")
+    
+    Container(redis, "Message Queue & Cache", "Redis, BullMQ", "Asynchronous job queue + API rate limiting cache", $sprite="redis")
+    
+    Container(worker, "Worker Container", "Node.js, BullMQ, Docker", "Dedicated container processing execution jobs. Spawns isolated child processes (Node.js, Python3, Java) with resource limits.", $sprite="nodejs")
+    
+    ContainerDb(db, "Session & Execution Store", "SQLite", "Two tables: code_sessions (sessions metadata) and code_executions (execution records with stdout/stderr/exit_code)")
+}
+
+' Request flow
+Rel(user, api, "Creates sessions, submits code, polls results", "HTTPS/JSON")
+Rel(api, db, "Reads/Writes sessions & executions", "SQL")
+Rel(api, redis, "Enqueues execution jobs", "BullMQ")
+
+' Job processing flow
+Rel(redis, worker, "Delivers queued jobs", "BullMQ")
+Rel(worker, db, "Updates execution status & results", "SQL")
+
+' Response flow
+Rel_Back(api, user, "Returns session ID, execution ID, results", "JSON")
+
+note left of api
+  API rate limiting (per session):
+  - Max 5 executions per minute
+  - Min 2s cooldown between runs
+  - Redis-based counter (INCR + EXPIRE)
+  - Returns 429 Too Many Requests if exceeded
+  
+  Autosave protection:
+  - Throttle: Immediate write if >1s since last write
+  - Debounce: Delayed write for rapid typing
+  - In-memory pending state with timeout
+end note
+
+note right of worker
+  Worker container spawns OS-level child processes
+  (not nested Docker containers) for code execution.
+  
+  Resource limits enforced:
+  - Timeout: 5 seconds max (SIGKILL on timeout)
+  - Output size: 1MB max (stdout + stderr)
+  - Memory: 128MB via language-specific flags
+    • Node.js: --max-old-space-size=128
+    • Java: -Xmx128m flag
+    • Python: resource.setrlimit() wrapper (Linux/Unix only)
+  
+  Worker configuration:
+  - Concurrency: 5 jobs processed simultaneously per worker
+  - Rate limit: 10 jobs/second per worker
+  - Crash recovery: Stalled job detection (30s interval)
+  - Max attempts: 3 (1 initial + 2 retries) if worker crashes
+  - Exponential backoff: 1s, 2s, 4s between retries
+  
+  Each execution uses isolated temp directory
+  with automatic cleanup after completion.
+end note
+
+note bottom of redis
+  Redis serves dual purpose:
+  1. Message broker for BullMQ job queue
+  2. Cache for API rate limiting (INCR/EXPIRE commands)
+  
+  No persistent data storage - only transient state.
+  Both API and Worker containers share same Redis instance.
+  
+  BullMQ features enabled:
+  - Job retry with exponential backoff
+  - Stalled job detection (worker crash recovery)
+  - Job completion/failure event system
+end note
+
+note left of db
+  SQLite database shared between API and Worker
+  containers via Docker volume mounting.
+  
+  Race condition prevention:
+  - Unique index: Only 1 active execution (QUEUED/RUNNING)
+    per session at any time
+  - Database-level constraint (not application-level)
+  - Returns 409 Conflict if duplicate execution attempted
+  
+  Autosave protection:
+  - Throttle: Min 1s between DB writes per session
+  - Debounce: Pending writes held in-memory
+  - Execution snapshot: Uses DB state at execution time
+end note
+
+@enduml
