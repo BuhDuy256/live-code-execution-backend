@@ -15,6 +15,11 @@ const forceReset = process.argv.includes('--force');
 
 try {
   const sql = fs.readFileSync(SQL_PATH, 'utf-8');
+  
+  // Ensure the database directory exists
+  const dbDir = path.dirname(DB_PATH);
+  fs.mkdirSync(dbDir, { recursive: true });
+  
   const db = new Database(DB_PATH);
 
   if (forceReset) {
