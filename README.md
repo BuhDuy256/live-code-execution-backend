@@ -320,23 +320,6 @@ Close a coding session (marks it as INACTIVE).
 
 ---
 
-#### Close Session
-
-Close a coding session.
-
-**Endpoint:** `DELETE /code-sessions/:session_id`
-
-**Response:** `200 OK`
-
-```json
-{
-  "session_id": "550e8400-e29b-41d4-a716-446655440000",
-  "status": "INACTIVE"
-}
-```
-
----
-
 ### Executions
 
 #### Get Execution Status
