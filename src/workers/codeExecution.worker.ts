@@ -157,8 +157,21 @@ codeExecutionWorker.on("completed", (job) => {
   console.log(`Job ${job.id} completed`);
 });
 
-codeExecutionWorker.on("failed", (job, err) => {
+codeExecutionWorker.on("failed", async (job, err) => {
   console.error(`Job ${job?.id} failed:`, err.message);
+
+  // Update database when BullMQ exhausts all retries
+  // This ensures jobs don't remain stuck at RUNNING status
+  if (job?.id && job.attemptsMade >= (job.opts.attempts ?? 1)) {
+    try {
+      await ExecutionRepository.updateExecutionStatus(String(job.id), ExecutionStatus.FAILED, {
+        error_message: "Job failed after all retries",
+      });
+      console.log(`Execution ${job.id} marked as FAILED in database after exhausting retries`);
+    } catch (dbError) {
+      console.error(`Failed to update execution ${job.id} status in database:`, dbError);
+    }
+  }
 });
 
 codeExecutionWorker.on("stalled", (jobId) => {

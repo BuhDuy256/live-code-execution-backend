@@ -1,0 +1,26 @@
+@startuml Execution Request Flow
+
+title Execution Request
+
+skinparam backgroundColor #FEFEFE
+skinparam sequenceMessageAlign center
+
+actor "User" as User
+participant "Frontend" as FE
+participant "API Server" as API
+queue "Redis Queue" as Redis
+database "Database" as DB
+
+User -> FE : Click "Run"
+FE -> API : POST /sessions/{id}/execute
+API -> DB : Create execution record (QUEUED)
+API -> Redis : Add job to queue
+API --> FE : 202 { execution_id, status }
+FE --> User : Show "Running..."
+
+note right of API
+  API responds immediately.
+  Code runs in background.
+end note
+
+@enduml

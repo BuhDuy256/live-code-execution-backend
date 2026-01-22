@@ -1,0 +1,27 @@
+@startuml Autosave Flow
+
+title Autosave Behavior
+
+skinparam backgroundColor #FEFEFE
+skinparam sequenceMessageAlign center
+
+actor "User" as User
+participant "Frontend" as FE
+participant "API Server" as API
+database "Database" as DB
+
+User -> FE : Edit code
+FE -> API : PATCH /sessions/{id} { source_code }
+API -> API : Apply throttling
+API -> DB : Update session with latest code
+DB --> API : Success
+API --> FE : 200 { session_id, status }
+FE --> User : Code saved
+
+note right of API
+  Throttling prevents
+  excessive DB writes.
+  Only latest code is saved.
+end note
+
+@enduml

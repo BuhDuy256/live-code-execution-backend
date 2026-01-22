@@ -1,0 +1,24 @@
+@startuml Background Execution Flow
+
+title Background Execution
+
+skinparam backgroundColor #FEFEFE
+skinparam sequenceMessageAlign center
+
+participant "Worker" as Worker
+queue "Redis Queue" as Redis
+database "Database" as DB
+
+Worker -> Redis : Pick up job
+Worker -> DB : Update status to RUNNING
+Worker -> Worker : Execute user code
+Worker -> DB : Save result (stdout, stderr, exit code)
+Worker -> DB : Update status to COMPLETED / FAILED / TIMEOUT
+
+note right of Worker
+  Worker runs code in
+  isolated child process
+  with timeout limit.
+end note
+
+@enduml

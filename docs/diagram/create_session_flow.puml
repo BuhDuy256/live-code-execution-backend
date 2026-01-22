@@ -1,0 +1,26 @@
+@startuml Create Session Flow
+
+title Create Code Session
+
+skinparam backgroundColor #FEFEFE
+skinparam sequenceMessageAlign center
+
+actor "User" as User
+participant "Frontend" as FE
+participant "API Server" as API
+database "Database" as DB
+
+User -> FE : Start coding
+FE -> API : POST /sessions { language }
+API -> DB : Create new session (status = ACTIVE)
+DB --> API : Session created
+API --> FE : 201 { session_id, status }
+FE --> User : Show code editor
+
+note right of API
+  API generates UUID
+  and stores session
+  with default template
+end note
+
+@enduml

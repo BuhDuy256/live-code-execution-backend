@@ -1,0 +1,25 @@
+@startuml Result Polling Flow
+
+title Result Polling
+
+skinparam backgroundColor #FEFEFE
+skinparam sequenceMessageAlign center
+
+actor "User" as User
+participant "Frontend" as FE
+participant "API Server" as API
+database "Database" as DB
+
+FE -> API : GET /executions/{id}
+API -> DB : Query execution status
+DB --> API : Execution record
+API --> FE : { status, stdout, stderr, execution_time }
+FE --> User : Display result
+
+note right of FE
+  Frontend polls until
+  status is COMPLETED,
+  FAILED, or TIMEOUT.
+end note
+
+@enduml
