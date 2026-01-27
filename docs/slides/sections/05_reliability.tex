@@ -2,7 +2,7 @@
 
 \section{Reliability \& Scalability}
 
-\begin{frame}{Idempotency: Four-Layer Protection}
+\begin{frame}{Idempotency Handling: Four-Layer Protection}
     \begin{block}{Problem}
         Users may click "Run" multiple times quickly. \\
         System must prevent duplicate executions without rejecting legitimate requests.
@@ -118,10 +118,10 @@
         \end{tabular}
     \end{table}
     
-    \vspace{0.3cm}
+    % \vspace{0.3cm}
     
-    \begin{alertblock}{Design for Current Needs, Plan for Growth}
-        Current architecture handles \textbf{moderate load} (100s of users). \\
-        Clear migration path documented for production scale (1000s of users).
-    \end{alertblock}
+    % \begin{alertblock}{Design for Current Needs, Plan for Growth}
+    %     Current architecture handles \textbf{moderate load} (100s of users). \\
+    %     Clear migration path documented for production scale (1000s of users).
+    % \end{alertblock}
 \end{frame}

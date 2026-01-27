@@ -75,9 +75,9 @@
     \begin{exampleblock}{Solution: Child Process Isolation}
         \begin{itemize}
             \item Run code in separate child process (not main server)
-            \item \textbf{5-second timeout:} Kill process if execution exceeds limit
-            \item \textbf{1MB output limit:} Monitor stdout/stderr in real-time, kill if exceeded
-            \item Process killed immediately with \texttt{SIGKILL} signal
+            \item \textbf{Time limit:} Process killed if execution exceeds 5 seconds
+            \item \textbf{Memory limit:} Language-specific flags enforce 128 MB cap
+            \item \textbf{Output limit:} Real-time monitoring kills process at 1 MB
         \end{itemize}
     \end{exampleblock}
     
@@ -131,19 +131,21 @@
     \begin{table}
         \centering
         \small
-        \begin{tabular}{|p{3.5cm}|p{2cm}|p{4cm}|}
+        \begin{tabular}{|p{3.0cm}|p{1.8cm}|p{2.2cm}|p{3.0cm}|}
             \hline
-            \textbf{Resource} & \textbf{Limit} & \textbf{Action} \\
+            \textbf{Resource} & \textbf{Limit} & \textbf{Enforced At} & \textbf{Action} \\
             \hline
-            Execution time & 5 seconds & Kill $\rightarrow$ \texttt{TIMEOUT} \\
+            Execution time & 5 seconds & Worker & Kill Process \\
             \hline
-            Output size & 1 MB & Kill $\rightarrow$ Error \\
+            Output size & 1 MB & Worker & Kill Process \\
             \hline
-            Concurrent jobs & 5 jobs & Queue \\
+            Memory usage & 128 MB & OS/Runtime & Process Crash \\
             \hline
-            Executions/session & 5/minute & HTTP 429 \\
+            Concurrent jobs & 5 jobs & Worker & Wait in Queue \\
             \hline
-            Cooldown & 2 seconds & Prevent re-run \\
+            Executions/min & 5/session & API (Redis) & Reject (429) \\
+            \hline
+            Cooldown & 2 seconds & API (Redis) & Reject (429) \\
             \hline
         \end{tabular}
     \end{table}
